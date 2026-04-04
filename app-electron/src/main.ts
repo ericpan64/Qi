@@ -132,10 +132,6 @@ function createWindow(): void {
       }
     });
   });
-
-  if (!app.isPackaged) {
-    mainWindow.webContents.openDevTools();
-  }
 }
 
 // --- Window Snapping ---
