@@ -239,9 +239,36 @@ Most data operations (website CRUD, scratch pad, settings) can be handled entire
 
 ---
 
-## Open Questions
+## Open Questions (Resolved)
 
-1. **Webview strategy**: Use Tauri 2.0 multi-webview API or iframes? Multi-webview is more capable but adds complexity. Recommend multi-webview for sites that need cookies/auth.
-2. **Tab cycling** (`Alt+Tab` / `Alt+Shift+Tab`): In the Electron version this cycled through multiple windows. With a single-window tab-based design, this becomes tab cycling instead.
-3. **Site preload scripts**: Electron allowed injecting preload scripts into webviews. If using Tauri multi-webview, investigate `WebviewBuilder::initialization_script()` for equivalent functionality.
-4. **Cross-platform shortcuts**: The original uses `Ctrl+` combos. On macOS, consider mapping to `Cmd+` or keeping `Ctrl+` for consistency.
+1. ~~**Webview strategy**~~: Resolved — see Learnings below. Switched to Electron with `<webview>` tag.
+2. **Tab cycling** (`Alt+Tab` / `Alt+Shift+Tab`): Becomes tab cycling in single-window design.
+3. **Site preload scripts**: Electron `<webview>` supports `preload` attribute natively.
+4. **Cross-platform shortcuts**: Electron's `CommandOrControl` modifier handles this automatically.
+
+---
+
+## Learnings from Tauri 2.0 Implementation
+
+### What worked well
+- **Rust backend**: Store operations, URL validation, and shortcut registration ported cleanly. The Tauri command/event IPC model is well-designed.
+- **SvelteKit frontend**: Svelte 5 runes (`$state`, `$derived`, `$effect`) replaced React hooks cleanly with less boilerplate.
+- **Separate-window site viewing**: Opening each site as its own `WebviewWindowBuilder` window worked reliably. Full browser capability, no CORS issues.
+- **Plugin ecosystem**: `tauri-plugin-store`, `tauri-plugin-global-shortcut` worked as expected.
+
+### What didn't work: Multi-webview in a single window
+- **`WebviewBuilder` + `Window::add_child`** (the `unstable` feature) was attempted to embed site webviews inside the main window, below the tab bar.
+- **Result**: The webview was created but rendered as a blank white area. The tab bar became distorted. Sites did not load visually.
+- **Root cause**: On macOS, Tauri uses WKWebView. Multiple WKWebViews in a single window **do not support z-order stacking**. `add_child` tiles/splits the window content area rather than overlaying. There is no CSS-level control over webview stacking — they are separate OS-level rendering surfaces.
+- **The `unstable` feature gate** was itself a warning sign. This API is not production-ready.
+- **Iframes** were ruled out early because most real-world sites set `X-Frame-Options: DENY` or `Content-Security-Policy: frame-ancestors 'none'`.
+
+### Decision: Switch to Electron
+Electron's `<webview>` tag solves the core problem:
+- It is a real Chromium renderer embedded as a DOM element
+- It participates in normal CSS layout (position, display, z-index)
+- No CORS/X-Frame-Options restrictions (it's a separate process, not an iframe)
+- Full browser capabilities (cookies, auth, devtools)
+- Show/hide with `display: none` — no platform-specific quirks
+
+**Trade-off**: ~150MB binary (ships Chromium) vs ~5-10MB (Tauri uses system WebKit). Higher memory baseline. But the in-window site embedding is a core feature that Tauri cannot deliver today.
