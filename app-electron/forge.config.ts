@@ -6,6 +6,7 @@ import { VitePlugin } from '@electron-forge/plugin-vite';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    icon: './assets/icon',
   },
   makers: [
     new MakerZIP({}, ['darwin']),
