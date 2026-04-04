@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, screen } from 'electron';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 
@@ -249,6 +249,34 @@ function registerShortcuts(): void {
 // --- App Lifecycle ---
 
 app.whenReady().then(() => {
+  // Remove default menu so Cmd+digit shortcuts pass through to webContents
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    {
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' },
+      ],
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' },
+      ],
+    },
+  ]));
+
   registerIpc();
   createWindow();
   registerShortcuts();
