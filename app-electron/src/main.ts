@@ -54,6 +54,15 @@ function readStore(): StoreData {
       }));
     }
 
+    // Normalize legacy windowSizes keys (e.g. leftWidthPercent → leftWidth)
+    const ws = parsed.windowSizes as Record<string, unknown>;
+    parsed.windowSizes = {
+      leftWidth: (ws.leftWidth as number) ?? (ws.leftWidthPercent as number) ?? DEFAULT_DATA.windowSizes.leftWidth,
+      rightWidth: (ws.rightWidth as number) ?? (ws.rightWidthPercent as number) ?? DEFAULT_DATA.windowSizes.rightWidth,
+      topHeight: (ws.topHeight as number) ?? (ws.topHeightPercent as number) ?? DEFAULT_DATA.windowSizes.topHeight,
+      bottomHeight: (ws.bottomHeight as number) ?? (ws.bottomHeightPercent as number) ?? DEFAULT_DATA.windowSizes.bottomHeight,
+    };
+
     return parsed;
   } catch {
     return { ...DEFAULT_DATA };
