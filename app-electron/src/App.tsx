@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { PresetTabBar } from "@/components/preset-tab-bar"
-import { BrowserView } from "@/components/browser-view"
+import { BrowserView, type NavState } from "@/components/browser-view"
+import { BrowserToolbar } from "@/components/browser-toolbar"
 import { NotepadView } from "@/components/notepad-view"
 import { SettingsView } from "@/components/settings-view"
 import { LeftSidebar } from "@/components/left-sidebar"
@@ -25,6 +26,10 @@ export default function App() {
     { id: "_1", content: "" },
   ])
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Browser navigation state
+  const webviewRefs = useRef<Record<string, WebviewElement | null>>({})
+  const [navStates, setNavStates] = useState<Record<string, NavState>>({})
 
   // Load persisted data on mount
   useEffect(() => {
@@ -54,6 +59,19 @@ export default function App() {
   useEffect(() => {
     if (!loaded) return
     window.electronAPI?.saveWebsites(sites)
+
+    // Prune stale refs and nav states for removed sites
+    const siteIds = new Set(sites.map((s) => s.id))
+    for (const id of Object.keys(webviewRefs.current)) {
+      if (!siteIds.has(id)) delete webviewRefs.current[id]
+    }
+    setNavStates((prev) => {
+      const next: Record<string, NavState> = {}
+      for (const id of Object.keys(prev)) {
+        if (siteIds.has(id)) next[id] = prev[id]
+      }
+      return Object.keys(next).length === Object.keys(prev).length ? prev : next
+    })
   }, [sites, loaded])
 
   // Keyboard shortcuts: Cmd/Ctrl + digit
@@ -95,7 +113,34 @@ export default function App() {
     setView("browser")
   }
 
+  // Webview ref and nav state callbacks (stable refs to avoid re-renders)
+  const handleWebviewRef = useCallback((siteId: string, el: WebviewElement | null) => {
+    webviewRefs.current[siteId] = el
+  }, [])
+
+  const handleNavStateChange = useCallback((siteId: string, state: NavState) => {
+    setNavStates((prev) => ({ ...prev, [siteId]: state }))
+  }, [])
+
+  // Toolbar actions
   const activeSite = sites.find((s) => s.id === activeId) ?? null
+  const activeNav = (activeId && navStates[activeId]) || { canGoBack: false, canGoForward: false, url: "" }
+
+  const handleBack = useCallback(() => {
+    if (activeId) webviewRefs.current[activeId]?.goBack()
+  }, [activeId])
+
+  const handleForward = useCallback(() => {
+    if (activeId) webviewRefs.current[activeId]?.goForward()
+  }, [activeId])
+
+  const handleHome = useCallback(() => {
+    if (activeId && activeSite) webviewRefs.current[activeId]?.loadURL(activeSite.url)
+  }, [activeId, activeSite])
+
+  const handleReload = useCallback(() => {
+    if (activeId) webviewRefs.current[activeId]?.reload()
+  }, [activeId])
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground font-sans">
@@ -113,27 +158,46 @@ export default function App() {
         />
 
         <main className="flex flex-col flex-1 min-h-0">
-          {view === "settings" ? (
+          {view === "settings" && (
             <SettingsView sites={sites} onSitesChange={setSites} />
-          ) : view === "notepad" ? (
-            <NotepadView tabs={scratchTabs} onTabsChange={setScratchTabs} />
-          ) : (
-            // Render all webviews, show/hide based on active site
-            <div className="flex-1 relative min-h-0">
-              {sites.map((site) => (
-                <BrowserView
-                  key={site.id}
-                  site={site}
-                  visible={view === "browser" && activeId === site.id}
-                />
-              ))}
-              {!activeSite && (
-                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                  Select a site from the tab bar or add one in Settings.
-                </div>
-              )}
-            </div>
           )}
+          {view === "notepad" && (
+            <NotepadView tabs={scratchTabs} onTabsChange={setScratchTabs} />
+          )}
+
+          {/* Toolbar — only visible in browser mode */}
+          {view === "browser" && (
+            <BrowserToolbar
+              canGoBack={activeNav.canGoBack}
+              canGoForward={activeNav.canGoForward}
+              url={activeNav.url}
+              onBack={handleBack}
+              onForward={handleForward}
+              onHome={handleHome}
+              onReload={handleReload}
+            />
+          )}
+
+          {/* Browser pane — always mounted to preserve webview state */}
+          <div
+            className="flex-1 relative min-h-0"
+            style={{ display: view === "browser" ? "flex" : "none" }}
+          >
+            {sites.map((site) => (
+              <BrowserView
+                key={site.id}
+                site={site}
+                visible={view === "browser" && activeId === site.id}
+                onWebviewRef={handleWebviewRef}
+                onNavStateChange={handleNavStateChange}
+              />
+            ))}
+            {!activeSite && (
+              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                Select a site from the tab bar or add one in Settings.
+              </div>
+            )}
+          </div>
         </main>
       </div>
     </div>

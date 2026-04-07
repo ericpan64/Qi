@@ -1,3 +1,13 @@
+interface WebviewElement extends HTMLElement {
+  canGoBack(): boolean
+  canGoForward(): boolean
+  goBack(): void
+  goForward(): void
+  reload(): void
+  loadURL(url: string): Promise<void>
+  getURL(): string
+}
+
 interface ElectronAPI {
   loadStore: () => Promise<{
     websites: import('../App').PresetSite[];
