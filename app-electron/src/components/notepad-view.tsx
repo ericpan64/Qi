@@ -15,9 +15,13 @@ interface NotepadViewProps {
 export function NotepadView({ tabs, onTabsChange }: NotepadViewProps) {
   const [activeTab, setActiveTab] = useState(tabs[0]?.id ?? "_1")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  // Monotonic counter so closed tab numbers are never reused (avoids duplicate ids)
+  const tabCounter = useRef(0)
 
   const addTab = () => {
-    const newId = `_${tabs.length + 1}`
+    const maxExisting = tabs.reduce((max, t) => Math.max(max, Number(t.id.slice(1)) || 0), 0)
+    tabCounter.current = Math.max(tabCounter.current, maxExisting) + 1
+    const newId = `_${tabCounter.current}`
     onTabsChange([...tabs, { id: newId, content: "" }])
     setActiveTab(newId)
   }
@@ -33,6 +37,7 @@ export function NotepadView({ tabs, onTabsChange }: NotepadViewProps) {
   }
 
   const clearAll = () => {
+    tabCounter.current = 1
     onTabsChange([{ id: "_1", content: "" }])
     setActiveTab("_1")
   }
