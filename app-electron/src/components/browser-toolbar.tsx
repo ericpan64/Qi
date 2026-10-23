@@ -1,4 +1,5 @@
-import { ArrowLeft, ArrowRight, House, RotateCw } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ArrowLeft, ArrowRight, House, RotateCw, Archive, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface BrowserToolbarProps {
@@ -9,6 +10,7 @@ interface BrowserToolbarProps {
   onForward: () => void
   onHome: () => void
   onReload: () => void
+  onStashPage: () => Promise<boolean>
 }
 
 function normalizeUrl(raw: string): string {
@@ -46,7 +48,20 @@ function NavButton({ onClick, title, disabled, children }: {
   )
 }
 
-export function BrowserToolbar({ canGoBack, canGoForward, url, onBack, onForward, onHome, onReload }: BrowserToolbarProps) {
+export function BrowserToolbar({ canGoBack, canGoForward, url, onBack, onForward, onHome, onReload, onStashPage }: BrowserToolbarProps) {
+  const [stashed, setStashed] = useState(false)
+
+  // Brief checkmark after a successful stash
+  useEffect(() => {
+    if (!stashed) return
+    const t = setTimeout(() => setStashed(false), 1500)
+    return () => clearTimeout(t)
+  }, [stashed])
+
+  const handleStash = async () => {
+    if (await onStashPage()) setStashed(true)
+  }
+
   return (
     <div className="flex items-center gap-0.5 h-9 px-2 bg-tab-bar border-b border-border shrink-0 select-none">
       <NavButton onClick={onBack} title="Back" disabled={!canGoBack}>
@@ -67,6 +82,10 @@ export function BrowserToolbar({ canGoBack, canGoForward, url, onBack, onForward
           {normalizeUrl(url)}
         </span>
       </div>
+
+      <NavButton onClick={handleStash} title="Stash page HTML" disabled={!url}>
+        {stashed ? <Check className="w-3.5 h-3.5 text-primary" /> : <Archive className="w-3.5 h-3.5" />}
+      </NavButton>
     </div>
   )
 }

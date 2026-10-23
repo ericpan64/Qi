@@ -1,4 +1,4 @@
-import { Home, NotebookPen } from "lucide-react"
+import { Home, NotebookPen, Archive } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { ViewMode } from "../App"
 
@@ -6,6 +6,7 @@ interface LeftSidebarProps {
   activeView: ViewMode
   onSettings: () => void
   onNotepad: () => void
+  onStash: () => void
 }
 
 function NavButton({ onClick, title, isActive, children }: {
@@ -31,7 +32,7 @@ function NavButton({ onClick, title, isActive, children }: {
   )
 }
 
-export function LeftSidebar({ activeView, onSettings, onNotepad }: LeftSidebarProps) {
+export function LeftSidebar({ activeView, onSettings, onNotepad, onStash }: LeftSidebarProps) {
   return (
     <aside className="flex flex-col items-center gap-1 w-12 shrink-0 bg-tab-bar border-r border-border py-3 select-none">
       <div className="flex items-center justify-center w-8 h-8 mb-3">
@@ -46,6 +47,10 @@ export function LeftSidebar({ activeView, onSettings, onNotepad }: LeftSidebarPr
 
       <NavButton onClick={onNotepad} title="Notes" isActive={activeView === "notepad"}>
         <NotebookPen className="w-4 h-4" />
+      </NavButton>
+
+      <NavButton onClick={onStash} title="Stash" isActive={activeView === "stash"}>
+        <Archive className="w-4 h-4" />
       </NavButton>
     </aside>
   )

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, screen } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, screen, shell } from 'electron';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 
@@ -71,6 +71,53 @@ function readStore(): StoreData {
 
 function writeStore(data: StoreData): void {
   fs.writeFileSync(getStorePath(), JSON.stringify(data, null, 2), 'utf-8');
+}
+
+// --- Stash (raw .txt files on disk) ---
+
+interface StashEntry {
+  name: string;
+  size: number;
+  mtime: number;
+}
+
+function getStashDir(): string {
+  const dir = path.join(app.getPath('userData'), 'stash');
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+// Resolve a renderer-supplied filename to a path inside the stash dir (no traversal)
+function stashPath(name: string): string {
+  const base = path.basename(name);
+  if (!base.endsWith('.txt')) throw new Error(`Invalid stash file: ${name}`);
+  return path.join(getStashDir(), base);
+}
+
+function slugify(title: string): string {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'untitled';
+}
+
+function listStash(): StashEntry[] {
+  const dir = getStashDir();
+  return fs.readdirSync(dir)
+    .filter((f) => f.endsWith('.txt'))
+    .map((name) => {
+      const stat = fs.statSync(path.join(dir, name));
+      return { name, size: stat.size, mtime: stat.mtimeMs };
+    })
+    .sort((a, b) => b.mtime - a.mtime);
+}
+
+function saveStash(title: string, content: string): string {
+  const stamp = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '');
+  const stem = `${stamp}_${slugify(title)}`;
+  let name = `${stem}.txt`;
+  for (let i = 2; fs.existsSync(path.join(getStashDir(), name)); i++) {
+    name = `${stem}-${i}.txt`;
+  }
+  fs.writeFileSync(path.join(getStashDir(), name), content, 'utf-8');
+  return name;
 }
 
 // --- Window Management ---
@@ -213,6 +260,11 @@ function registerIpc(): void {
     return data.scratchTabs;
   });
 
+  ipcMain.handle('stash:list', () => listStash());
+  ipcMain.handle('stash:read', (_e, name: string) => fs.readFileSync(stashPath(name), 'utf-8'));
+  ipcMain.handle('stash:save', (_e, title: string, content: string) => saveStash(title, content));
+  ipcMain.handle('stash:delete', (_e, name: string) => fs.rmSync(stashPath(name), { force: true }));
+  ipcMain.handle('stash:openFolder', () => shell.openPath(getStashDir()));
 }
 
 // --- Global Shortcuts ---
