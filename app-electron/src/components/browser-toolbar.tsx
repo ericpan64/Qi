@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { ArrowLeft, ArrowRight, House, RotateCw, Archive, Check } from "lucide-react"
+import { ArrowLeft, ArrowRight, House, RotateCw, Archive, Check, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface BrowserToolbarProps {
@@ -49,17 +49,17 @@ function NavButton({ onClick, title, disabled, children }: {
 }
 
 export function BrowserToolbar({ canGoBack, canGoForward, url, onBack, onForward, onHome, onReload, onStashPage }: BrowserToolbarProps) {
-  const [stashed, setStashed] = useState(false)
+  const [stashStatus, setStashStatus] = useState<"idle" | "saved" | "failed">("idle")
 
-  // Brief checkmark after a successful stash
+  // Brief checkmark (or X on failure) after a stash attempt
   useEffect(() => {
-    if (!stashed) return
-    const t = setTimeout(() => setStashed(false), 1500)
+    if (stashStatus === "idle") return
+    const t = setTimeout(() => setStashStatus("idle"), 1500)
     return () => clearTimeout(t)
-  }, [stashed])
+  }, [stashStatus])
 
   const handleStash = async () => {
-    if (await onStashPage()) setStashed(true)
+    setStashStatus((await onStashPage()) ? "saved" : "failed")
   }
 
   return (
@@ -83,8 +83,18 @@ export function BrowserToolbar({ canGoBack, canGoForward, url, onBack, onForward
         </span>
       </div>
 
-      <NavButton onClick={handleStash} title="Stash page HTML" disabled={!url}>
-        {stashed ? <Check className="w-3.5 h-3.5 text-primary" /> : <Archive className="w-3.5 h-3.5" />}
+      <NavButton
+        onClick={handleStash}
+        title={stashStatus === "failed" ? "Stash failed" : "Stash page HTML"}
+        disabled={!url}
+      >
+        {stashStatus === "saved" ? (
+          <Check className="w-3.5 h-3.5 text-primary" />
+        ) : stashStatus === "failed" ? (
+          <X className="w-3.5 h-3.5 text-destructive" />
+        ) : (
+          <Archive className="w-3.5 h-3.5" />
+        )}
       </NavButton>
     </div>
   )
