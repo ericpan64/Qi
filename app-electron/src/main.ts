@@ -110,14 +110,20 @@ function listStash(): StashEntry[] {
     .sort((a, b) => b.mtime - a.mtime);
 }
 
-// Case-insensitive match on filename or content; content matches carry a snippet
-function searchStash(query: string): StashEntry[] {
+// Case-insensitive match on filename or content; content matches carry a snippet.
+// Async reads so large HTML stashes don't block the main process (shortcuts, window).
+async function searchStash(query: string): Promise<StashEntry[]> {
   const q = query.trim().toLowerCase();
   if (!q) return listStash();
   const dir = getStashDir();
   const results: StashEntry[] = [];
   for (const entry of listStash()) {
-    const content = fs.readFileSync(path.join(dir, entry.name), 'utf-8');
+    let content: string;
+    try {
+      content = await fs.promises.readFile(path.join(dir, entry.name), 'utf-8');
+    } catch {
+      continue; // skip files deleted or unreadable mid-search
+    }
     const idx = content.toLowerCase().indexOf(q);
     if (idx !== -1) {
       const start = Math.max(0, idx - 40);

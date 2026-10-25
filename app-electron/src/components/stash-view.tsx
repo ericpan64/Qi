@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Plus, Trash2, FolderOpen, FileText, Search, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -24,11 +24,16 @@ export function StashView() {
   const [noteTitle, setNoteTitle] = useState("")
   const [noteBody, setNoteBody] = useState("")
 
+  const requestId = useRef(0)
+
+  // Returns null when a newer search started while this one was in flight
   const refresh = useCallback(async () => {
+    const id = ++requestId.current
     const [all, list] = await Promise.all([
       window.electronAPI?.listStash() ?? [],
       window.electronAPI?.searchStash(query) ?? [],
     ])
+    if (id !== requestId.current) return null
     setTotal(all.length)
     setEntries(list)
     return list
@@ -38,6 +43,7 @@ export function StashView() {
   useEffect(() => {
     const t = setTimeout(() => {
       refresh().then((list) => {
+        if (!list) return
         setSelected((prev) => (prev && list.some((e) => e.name === prev) ? prev : list[0]?.name ?? null))
       })
     }, query ? 200 : 0)
@@ -66,7 +72,7 @@ export function StashView() {
   const deleteEntry = async (name: string) => {
     await window.electronAPI?.deleteStash(name)
     const list = await refresh()
-    if (selected === name) setSelected(list[0]?.name ?? null)
+    if (list && selected === name) setSelected(list[0]?.name ?? null)
   }
 
   return (
