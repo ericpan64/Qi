@@ -79,6 +79,7 @@ interface StashEntry {
   name: string;
   size: number;
   mtime: number;
+  snippet?: string;
 }
 
 function getStashDir(): string {
@@ -107,6 +108,33 @@ function listStash(): StashEntry[] {
       return { name, size: stat.size, mtime: stat.mtimeMs };
     })
     .sort((a, b) => b.mtime - a.mtime);
+}
+
+// Case-insensitive match on filename or content; content matches carry a snippet.
+// Async reads so large HTML stashes don't block the main process (shortcuts, window).
+async function searchStash(query: string): Promise<StashEntry[]> {
+  const q = query.trim().toLowerCase();
+  if (!q) return listStash();
+  const dir = getStashDir();
+  const results: StashEntry[] = [];
+  for (const entry of listStash()) {
+    let content: string;
+    try {
+      content = await fs.promises.readFile(path.join(dir, entry.name), 'utf-8');
+    } catch {
+      continue; // skip files deleted or unreadable mid-search
+    }
+    const idx = content.toLowerCase().indexOf(q);
+    if (idx !== -1) {
+      const start = Math.max(0, idx - 40);
+      const end = Math.min(content.length, idx + q.length + 60);
+      const snippet = content.slice(start, end).replace(/\s+/g, ' ').trim();
+      results.push({ ...entry, snippet: `${start > 0 ? '…' : ''}${snippet}${end < content.length ? '…' : ''}` });
+    } else if (entry.name.toLowerCase().includes(q)) {
+      results.push(entry);
+    }
+  }
+  return results;
 }
 
 function saveStash(title: string, content: string): string {
@@ -261,6 +289,7 @@ function registerIpc(): void {
   });
 
   ipcMain.handle('stash:list', () => listStash());
+  ipcMain.handle('stash:search', (_e, query: string) => searchStash(query));
   ipcMain.handle('stash:read', (_e, name: string) => fs.readFileSync(stashPath(name), 'utf-8'));
   ipcMain.handle('stash:save', (_e, title: string, content: string) => saveStash(title, content));
   ipcMain.handle('stash:delete', (_e, name: string) => fs.rmSync(stashPath(name), { force: true }));
