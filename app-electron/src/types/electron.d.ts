@@ -20,6 +20,7 @@ interface ElectronAPI {
   saveWindowSizes: (sizes: unknown) => Promise<unknown>;
   saveScratchTabs: (tabs: unknown[]) => Promise<unknown>;
   listStash: () => Promise<StashEntry[]>;
+  searchStash: (query: string) => Promise<StashEntry[]>;
   readStash: (name: string) => Promise<string>;
   saveStash: (title: string, content: string) => Promise<string>;
   deleteStash: (name: string) => Promise<void>;
@@ -32,6 +33,7 @@ declare global {
     name: string;
     size: number;
     mtime: number;
+    snippet?: string;
   }
 
   interface Window {

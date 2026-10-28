@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react"
-import { Plus, Trash2, FolderOpen, FileText } from "lucide-react"
+import { useState, useEffect, useCallback, useRef } from "react"
+import { Plus, Trash2, FolderOpen, FileText, Search, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 function formatSize(bytes: number): string {
@@ -16,23 +16,39 @@ function formatDate(ms: number): string {
 
 export function StashView() {
   const [entries, setEntries] = useState<StashEntry[]>([])
+  const [total, setTotal] = useState(0)
+  const [query, setQuery] = useState("")
   const [selected, setSelected] = useState<string | null>(null)
   const [content, setContent] = useState("")
   const [composing, setComposing] = useState(false)
   const [noteTitle, setNoteTitle] = useState("")
   const [noteBody, setNoteBody] = useState("")
 
+  const requestId = useRef(0)
+
+  // Returns null when a newer search started while this one was in flight
   const refresh = useCallback(async () => {
-    const list = (await window.electronAPI?.listStash()) ?? []
+    const id = ++requestId.current
+    const [all, list] = await Promise.all([
+      window.electronAPI?.listStash() ?? [],
+      window.electronAPI?.searchStash(query) ?? [],
+    ])
+    if (id !== requestId.current) return null
+    setTotal(all.length)
     setEntries(list)
     return list
-  }, [])
+  }, [query])
 
+  // Debounced so content search doesn't re-read every file on each keystroke
   useEffect(() => {
-    refresh().then((list) => {
-      if (list.length) setSelected(list[0].name)
-    })
-  }, [refresh])
+    const t = setTimeout(() => {
+      refresh().then((list) => {
+        if (!list) return
+        setSelected((prev) => (prev && list.some((e) => e.name === prev) ? prev : list[0]?.name ?? null))
+      })
+    }, query ? 200 : 0)
+    return () => clearTimeout(t)
+  }, [refresh, query])
 
   useEffect(() => {
     if (!selected) { setContent(""); return }
@@ -56,15 +72,37 @@ export function StashView() {
   const deleteEntry = async (name: string) => {
     await window.electronAPI?.deleteStash(name)
     const list = await refresh()
-    if (selected === name) setSelected(list[0]?.name ?? null)
+    if (list && selected === name) setSelected(list[0]?.name ?? null)
   }
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-background">
       <div className="flex items-center justify-between gap-1 px-3 py-1.5 border-b border-border bg-surface shrink-0">
-        <span className="text-xs font-mono text-muted-foreground">
-          {entries.length} stashed
-        </span>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-1 max-w-xs px-2 py-1 rounded-md bg-background border border-border focus-within:border-primary/40">
+            <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Escape") setQuery("") }}
+              placeholder="Search stash..."
+              spellCheck={false}
+              className="flex-1 min-w-0 bg-transparent text-xs font-mono text-foreground outline-none placeholder:text-muted-foreground/40"
+            />
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+          <span className="text-xs font-mono text-muted-foreground shrink-0">
+            {query ? `${entries.length} of ${total}` : `${total} stashed`}
+          </span>
+        </div>
         <div className="flex items-center gap-1">
           <button
             onClick={startNote}
@@ -87,7 +125,12 @@ export function StashView() {
 
       <div className="flex flex-1 min-h-0">
         <ul className="w-56 shrink-0 border-r border-border overflow-y-auto">
-          {entries.length === 0 && (
+          {entries.length === 0 && query && (
+            <li className="px-3 py-4 text-xs text-muted-foreground">
+              No matches for "{query}".
+            </li>
+          )}
+          {total === 0 && !query && (
             <li className="px-3 py-4 text-xs text-muted-foreground">
               Nothing stashed yet. Save a page from the browser toolbar or add a note.
             </li>
@@ -109,6 +152,11 @@ export function StashView() {
                 <p className="text-[10px] text-muted-foreground/60">
                   {formatDate(entry.mtime)} {'·'} {formatSize(entry.size)}
                 </p>
+                {entry.snippet && (
+                  <p className="mt-1 text-[10px] font-mono text-muted-foreground/80 line-clamp-2 break-all">
+                    {entry.snippet}
+                  </p>
+                )}
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); deleteEntry(entry.name) }}
