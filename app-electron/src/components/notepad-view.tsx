@@ -12,12 +12,18 @@ interface NotepadViewProps {
   onTabsChange: (tabs: NoteTab[]) => void
 }
 
+// Monotonic tab counter so closed tab numbers are never reused (avoids duplicate ids).
+// Module-scoped so it survives NotepadView unmounting when switching views.
+let tabCounter = 0
+
 export function NotepadView({ tabs, onTabsChange }: NotepadViewProps) {
   const [activeTab, setActiveTab] = useState(tabs[0]?.id ?? "_1")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const addTab = () => {
-    const newId = `_${tabs.length + 1}`
+    const maxExisting = tabs.reduce((max, t) => Math.max(max, Number(t.id.slice(1)) || 0), 0)
+    tabCounter = Math.max(tabCounter, maxExisting) + 1
+    const newId = `_${tabCounter}`
     onTabsChange([...tabs, { id: newId, content: "" }])
     setActiveTab(newId)
   }
@@ -33,6 +39,7 @@ export function NotepadView({ tabs, onTabsChange }: NotepadViewProps) {
   }
 
   const clearAll = () => {
+    tabCounter = 1
     onTabsChange([{ id: "_1", content: "" }])
     setActiveTab("_1")
   }
