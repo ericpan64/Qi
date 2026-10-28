@@ -6,6 +6,8 @@ interface WebviewElement extends HTMLElement {
   reload(): void
   loadURL(url: string): Promise<void>
   getURL(): string
+  getTitle(): string
+  executeJavaScript<T = unknown>(code: string): Promise<T>
 }
 
 interface ElectronAPI {
@@ -17,10 +19,21 @@ interface ElectronAPI {
   saveWebsites: (websites: unknown[]) => Promise<unknown>;
   saveWindowSizes: (sizes: unknown) => Promise<unknown>;
   saveScratchTabs: (tabs: unknown[]) => Promise<unknown>;
+  listStash: () => Promise<StashEntry[]>;
+  readStash: (name: string) => Promise<string>;
+  saveStash: (title: string, content: string) => Promise<string>;
+  deleteStash: (name: string) => Promise<void>;
+  openStashFolder: () => Promise<string>;
   onSwitchTab: (callback: (shortcut: number) => void) => () => void;
 }
 
 declare global {
+  interface StashEntry {
+    name: string;
+    size: number;
+    mtime: number;
+  }
+
   interface Window {
     electronAPI?: ElectronAPI;
   }

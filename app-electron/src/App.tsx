@@ -5,6 +5,7 @@ import { BrowserToolbar } from "@/components/browser-toolbar"
 import { NotepadView } from "@/components/notepad-view"
 import { SettingsView } from "@/components/settings-view"
 import { LeftSidebar } from "@/components/left-sidebar"
+import { StashView } from "@/components/stash-view"
 
 export interface PresetSite {
   id: string
@@ -13,7 +14,7 @@ export interface PresetSite {
   shortcut: number | string
 }
 
-export type ViewMode = "browser" | "notepad" | "settings"
+export type ViewMode = "browser" | "notepad" | "settings" | "stash"
 
 export default function App() {
   const [sites, setSites] = useState<PresetSite[]>([])
@@ -142,12 +143,27 @@ export default function App() {
     if (activeId) webviewRefs.current[activeId]?.reload()
   }, [activeId])
 
+  // Save the active page's raw HTML to the stash as a .txt file
+  const handleStashPage = useCallback(async () => {
+    const wv = activeId ? webviewRefs.current[activeId] : null
+    if (!wv) return false
+    try {
+      const html = await wv.executeJavaScript<string>("document.documentElement.outerHTML")
+      const title = wv.getTitle() || activeSite?.label || "page"
+      await window.electronAPI?.saveStash(title, html)
+      return true
+    } catch {
+      return false
+    }
+  }, [activeId, activeSite])
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground font-sans">
       <LeftSidebar
         activeView={view}
         onSettings={() => setView("settings")}
         onNotepad={() => setView("notepad")}
+        onStash={() => setView("stash")}
       />
 
       <div className="flex flex-col flex-1 min-w-0">
@@ -164,6 +180,7 @@ export default function App() {
           {view === "notepad" && (
             <NotepadView tabs={scratchTabs} onTabsChange={setScratchTabs} />
           )}
+          {view === "stash" && <StashView />}
 
           {/* Toolbar — only visible in browser mode */}
           {view === "browser" && (
@@ -175,6 +192,7 @@ export default function App() {
               onForward={handleForward}
               onHome={handleHome}
               onReload={handleReload}
+              onStashPage={handleStashPage}
             />
           )}
 

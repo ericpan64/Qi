@@ -1,4 +1,5 @@
-import { ArrowLeft, ArrowRight, House, RotateCw } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ArrowLeft, ArrowRight, House, RotateCw, Archive, Check, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface BrowserToolbarProps {
@@ -9,6 +10,7 @@ interface BrowserToolbarProps {
   onForward: () => void
   onHome: () => void
   onReload: () => void
+  onStashPage: () => Promise<boolean>
 }
 
 function normalizeUrl(raw: string): string {
@@ -46,7 +48,20 @@ function NavButton({ onClick, title, disabled, children }: {
   )
 }
 
-export function BrowserToolbar({ canGoBack, canGoForward, url, onBack, onForward, onHome, onReload }: BrowserToolbarProps) {
+export function BrowserToolbar({ canGoBack, canGoForward, url, onBack, onForward, onHome, onReload, onStashPage }: BrowserToolbarProps) {
+  const [stashStatus, setStashStatus] = useState<"idle" | "saved" | "failed">("idle")
+
+  // Brief checkmark (or X on failure) after a stash attempt
+  useEffect(() => {
+    if (stashStatus === "idle") return
+    const t = setTimeout(() => setStashStatus("idle"), 1500)
+    return () => clearTimeout(t)
+  }, [stashStatus])
+
+  const handleStash = async () => {
+    setStashStatus((await onStashPage()) ? "saved" : "failed")
+  }
+
   return (
     <div className="flex items-center gap-0.5 h-9 px-2 bg-tab-bar border-b border-border shrink-0 select-none">
       <NavButton onClick={onBack} title="Back" disabled={!canGoBack}>
@@ -67,6 +82,20 @@ export function BrowserToolbar({ canGoBack, canGoForward, url, onBack, onForward
           {normalizeUrl(url)}
         </span>
       </div>
+
+      <NavButton
+        onClick={handleStash}
+        title={stashStatus === "failed" ? "Stash failed" : "Stash page HTML"}
+        disabled={!url}
+      >
+        {stashStatus === "saved" ? (
+          <Check className="w-3.5 h-3.5 text-primary" />
+        ) : stashStatus === "failed" ? (
+          <X className="w-3.5 h-3.5 text-destructive" />
+        ) : (
+          <Archive className="w-3.5 h-3.5" />
+        )}
+      </NavButton>
     </div>
   )
 }
