@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { PresetTabBar } from "@/components/preset-tab-bar"
 import { BrowserView, type NavState } from "@/components/browser-view"
 import { BrowserToolbar } from "@/components/browser-toolbar"
-import { NotepadView } from "@/components/notepad-view"
+import { NotepadView, dedupeTabIds, maxTabNumber } from "@/components/notepad-view"
 import { SettingsView } from "@/components/settings-view"
 import { LeftSidebar } from "@/components/left-sidebar"
 import { StashView } from "@/components/stash-view"
@@ -26,6 +26,7 @@ export default function App() {
   const [scratchTabs, setScratchTabs] = useState<{ id: string; content: string }[]>([
     { id: "_1", content: "" },
   ])
+  const [lastTabNumber, setLastTabNumber] = useState(1)
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Browser navigation state
@@ -40,7 +41,9 @@ export default function App() {
         setActiveId(data.websites[0].id)
       }
       if (data.scratchTabs?.length) {
-        setScratchTabs(data.scratchTabs)
+        const tabs = dedupeTabIds(data.scratchTabs)
+        setScratchTabs(tabs)
+        setLastTabNumber(Math.max(data.lastTabNumber ?? 0, maxTabNumber(tabs)))
       }
       setLoaded(true)
     }).catch(() => setLoaded(true))
@@ -51,10 +54,10 @@ export default function App() {
     if (!loaded) return
     if (saveTimeout.current) clearTimeout(saveTimeout.current)
     saveTimeout.current = setTimeout(() => {
-      window.electronAPI?.saveScratchTabs(scratchTabs)
+      window.electronAPI?.saveScratchTabs(scratchTabs, lastTabNumber)
     }, 500)
     return () => { if (saveTimeout.current) clearTimeout(saveTimeout.current) }
-  }, [scratchTabs, loaded])
+  }, [scratchTabs, lastTabNumber, loaded])
 
   // Persist websites when they change
   useEffect(() => {
@@ -178,7 +181,12 @@ export default function App() {
             <SettingsView sites={sites} onSitesChange={setSites} />
           )}
           {view === "notepad" && (
-            <NotepadView tabs={scratchTabs} onTabsChange={setScratchTabs} />
+            <NotepadView
+              tabs={scratchTabs}
+              onTabsChange={setScratchTabs}
+              lastTabNumber={lastTabNumber}
+              onLastTabNumberChange={setLastTabNumber}
+            />
           )}
           {view === "stash" && <StashView />}
 

@@ -10,15 +10,37 @@ interface NoteTab {
 interface NotepadViewProps {
   tabs: NoteTab[]
   onTabsChange: (tabs: NoteTab[]) => void
+  // Highest tab number ever issued; never decreases when tabs close, so numbers are never reused
+  lastTabNumber: number
+  onLastTabNumberChange: (n: number) => void
 }
 
-export function NotepadView({ tabs, onTabsChange }: NotepadViewProps) {
+const tabNumber = (id: string) => Number(id.slice(1)) || 0
+
+export const maxTabNumber = (tabs: NoteTab[]) =>
+  tabs.reduce((max, t) => Math.max(max, tabNumber(t.id)), 0)
+
+// Repair persisted tabs that got duplicate ids from the old length-based numbering
+export function dedupeTabIds(tabs: NoteTab[]): NoteTab[] {
+  const seen = new Set<string>()
+  const result: NoteTab[] = []
+  for (const tab of tabs) {
+    const id = seen.has(tab.id) ? `_${maxTabNumber([...tabs, ...result]) + 1}` : tab.id
+    seen.add(id)
+    result.push({ ...tab, id })
+  }
+  return result
+}
+
+export function NotepadView({ tabs, onTabsChange, lastTabNumber, onLastTabNumberChange }: NotepadViewProps) {
   const [activeTab, setActiveTab] = useState(tabs[0]?.id ?? "_1")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const addTab = () => {
-    const newId = `_${tabs.length + 1}`
+    const next = Math.max(lastTabNumber, maxTabNumber(tabs)) + 1
+    const newId = `_${next}`
     onTabsChange([...tabs, { id: newId, content: "" }])
+    onLastTabNumberChange(next)
     setActiveTab(newId)
   }
 
@@ -34,6 +56,7 @@ export function NotepadView({ tabs, onTabsChange }: NotepadViewProps) {
 
   const clearAll = () => {
     onTabsChange([{ id: "_1", content: "" }])
+    onLastTabNumberChange(1)
     setActiveTab("_1")
   }
 
