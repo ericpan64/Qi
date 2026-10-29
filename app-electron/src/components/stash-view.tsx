@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react"
-import { Plus, Trash2, FolderOpen, FileText, Search, X, Eye, Code2 } from "lucide-react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
+import { Plus, Trash2, FolderOpen, FileText, Search, X, Eye, Code2, ScanText } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { scrapeText } from "@/lib/scrape"
 
 // Page stashes are raw outerHTML; notes won't start with an <html> tag
 const isHtmlContent = (text: string) => /^\s*<(!doctype html|html[\s>])/i.test(text)
@@ -23,7 +24,9 @@ export function StashView() {
   const [query, setQuery] = useState("")
   const [selected, setSelected] = useState<string | null>(null)
   const [content, setContent] = useState("")
-  const [mode, setMode] = useState<"rendered" | "source">("rendered")
+  const [mode, setMode] = useState<"rendered" | "source" | "scraped">("rendered")
+  // Only parse when the Scraped view is open; large pages take a moment
+  const scraped = useMemo(() => (mode === "scraped" ? scrapeText(content) : ""), [mode, content])
   const [composing, setComposing] = useState(false)
   const [noteTitle, setNoteTitle] = useState("")
   const [noteBody, setNoteBody] = useState("")
@@ -210,7 +213,7 @@ export function StashView() {
           ) : selected && isHtmlContent(content) ? (
             <>
               <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border shrink-0">
-                {([["rendered", Eye, "Rendered"], ["source", Code2, "Source"]] as const).map(([value, Icon, text]) => (
+                {([["rendered", Eye, "Rendered"], ["source", Code2, "Source"], ["scraped", ScanText, "Scraped"]] as const).map(([value, Icon, text]) => (
                   <button
                     key={value}
                     onClick={() => setMode(value)}
@@ -229,6 +232,12 @@ export function StashView() {
               {mode === "rendered" ? (
                 // Empty sandbox: no scripts, forms, popups, or access to the app's origin
                 <iframe srcDoc={content} sandbox="" title={selected} className="flex-1 w-full border-0 bg-white" />
+              ) : mode === "scraped" ? (
+                <textarea
+                  value={scraped || "No readable text found."}
+                  readOnly
+                  className="flex-1 w-full resize-none bg-background text-foreground font-sans text-sm leading-relaxed whitespace-pre-wrap p-4 outline-none border-0 selection:bg-primary/30"
+                />
               ) : (
                 <textarea
                   value={content}
