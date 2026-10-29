@@ -37,7 +37,9 @@ function SiteCard({ site, onRemove }: { site: PresetSite; onRemove: () => void }
       </div>
 
       <div className="text-center">
-        <p className="text-sm font-semibold text-foreground leading-none mb-1">{site.label}</p>
+        {site.label && (
+          <p className="text-sm font-semibold text-foreground leading-none mb-1 whitespace-pre">{site.label}</p>
+        )}
         <p className="text-[11px] text-muted-foreground font-mono truncate max-w-[120px]">{domain}</p>
       </div>
     </div>
@@ -54,7 +56,7 @@ function AddSiteModal({ onAdd, onClose, nextShortcut }: {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!label.trim() || !url.trim()) return
+    if (!url.trim()) return
     const normalized = url.startsWith("http") ? url : `https://${url}`
     onAdd({ label: label.trim(), url: normalized, shortcut: nextShortcut })
     onClose()
@@ -71,7 +73,7 @@ function AddSiteModal({ onAdd, onClose, nextShortcut }: {
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Name <span className="normal-case tracking-normal text-muted-foreground/50">(optional)</span></label>
             <input
               type="text"
               value={label}
@@ -93,7 +95,7 @@ function AddSiteModal({ onAdd, onClose, nextShortcut }: {
           </div>
           <button
             type="submit"
-            disabled={!label.trim() || !url.trim()}
+            disabled={!url.trim()}
             className="mt-1 w-full bg-primary text-primary-foreground rounded-lg py-2 text-sm font-semibold hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             Add Site

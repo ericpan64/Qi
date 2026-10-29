@@ -117,6 +117,10 @@ export default function App() {
     setView("browser")
   }
 
+  const handleRenameSite = (id: string, label: string) => {
+    setSites((prev) => prev.map((s) => (s.id === id ? { ...s, label } : s)))
+  }
+
   // Webview ref and nav state callbacks (stable refs to avoid re-renders)
   const handleWebviewRef = useCallback((siteId: string, el: WebviewElement | null) => {
     webviewRefs.current[siteId] = el
@@ -174,6 +178,7 @@ export default function App() {
           sites={sites}
           activeId={view === "browser" ? activeId : null}
           onSelect={handleSelectSite}
+          onRename={handleRenameSite}
         />
 
         <main className="flex flex-col flex-1 min-h-0">
