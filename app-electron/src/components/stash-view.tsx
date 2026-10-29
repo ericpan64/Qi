@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Plus, Trash2, FolderOpen, FileText, Search, X } from "lucide-react"
+import { Plus, Trash2, FolderOpen, FileText, Search, X, Eye, Code2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+
+// Page stashes are raw outerHTML; notes won't start with an <html> tag
+const isHtmlContent = (text: string) => /^\s*<(!doctype html|html[\s>])/i.test(text)
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -20,6 +23,7 @@ export function StashView() {
   const [query, setQuery] = useState("")
   const [selected, setSelected] = useState<string | null>(null)
   const [content, setContent] = useState("")
+  const [mode, setMode] = useState<"rendered" | "source">("rendered")
   const [composing, setComposing] = useState(false)
   const [noteTitle, setNoteTitle] = useState("")
   const [noteBody, setNoteBody] = useState("")
@@ -51,6 +55,7 @@ export function StashView() {
   }, [refresh, query])
 
   useEffect(() => {
+    setMode("rendered")
     if (!selected) { setContent(""); return }
     window.electronAPI?.readStash(selected).then(setContent).catch(() => setContent(""))
   }, [selected])
@@ -201,6 +206,37 @@ export function StashView() {
                 spellCheck={false}
                 className="flex-1 w-full resize-none bg-background text-foreground font-mono text-sm leading-relaxed p-4 outline-none border-0 placeholder:text-muted-foreground/40 selection:bg-primary/30"
               />
+            </>
+          ) : selected && isHtmlContent(content) ? (
+            <>
+              <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border shrink-0">
+                {([["rendered", Eye, "Rendered"], ["source", Code2, "Source"]] as const).map(([value, Icon, text]) => (
+                  <button
+                    key={value}
+                    onClick={() => setMode(value)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono rounded-md transition-colors",
+                      mode === value
+                        ? "bg-primary/15 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-tab-hover"
+                    )}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{text}</span>
+                  </button>
+                ))}
+              </div>
+              {mode === "rendered" ? (
+                // Empty sandbox: no scripts, forms, popups, or access to the app's origin
+                <iframe srcDoc={content} sandbox="" title={selected} className="flex-1 w-full border-0 bg-white" />
+              ) : (
+                <textarea
+                  value={content}
+                  readOnly
+                  spellCheck={false}
+                  className="flex-1 w-full resize-none bg-background text-foreground font-mono text-sm leading-relaxed p-4 outline-none border-0 selection:bg-primary/30"
+                />
+              )}
             </>
           ) : selected ? (
             <textarea

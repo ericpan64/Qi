@@ -16,6 +16,16 @@ export interface PresetSite {
 
 export type ViewMode = "browser" | "notepad" | "settings" | "stash"
 
+// Record the page URL in stashed HTML so relative CSS/images resolve when rendered later
+function withBaseHref(html: string, url: string): string {
+  if (!url || /<base[\s>]/i.test(html)) return html
+  const tag = `<base href="${url.replace(/&/g, "&amp;").replace(/"/g, "&quot;")}">`
+  const head = html.match(/<head[^>]*>/i)
+  if (!head || head.index === undefined) return tag + html
+  const at = head.index + head[0].length
+  return html.slice(0, at) + tag + html.slice(at)
+}
+
 export default function App() {
   const [sites, setSites] = useState<PresetSite[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -157,7 +167,7 @@ export default function App() {
     try {
       const html = await wv.executeJavaScript<string>("document.documentElement.outerHTML")
       const title = wv.getTitle() || activeSite?.label || "page"
-      await window.electronAPI?.saveStash(title, html)
+      await window.electronAPI?.saveStash(title, withBaseHref(html, wv.getURL()))
       return true
     } catch {
       return false
