@@ -1,5 +1,5 @@
-import { useState, useRef } from "react"
-import { X, Plus, Trash2, Code2 } from "lucide-react"
+import { useState, useRef, useEffect } from "react"
+import { X, Plus, Trash2, Code2, Archive, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface NoteTab {
@@ -44,6 +44,14 @@ export function NotepadView({ tabs, onTabsChange, lastTabNumber, onLastTabNumber
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draftName, setDraftName] = useState("")
+  const [stashStatus, setStashStatus] = useState<"idle" | "saved" | "failed">("idle")
+
+  // Brief checkmark (or X on failure) after a stash attempt
+  useEffect(() => {
+    if (stashStatus === "idle") return
+    const t = setTimeout(() => setStashStatus("idle"), 1500)
+    return () => clearTimeout(t)
+  }, [stashStatus])
 
   const draftTrimmed = draftName.trim()
   const draftIsDuplicate =
@@ -92,6 +100,20 @@ export function NotepadView({ tabs, onTabsChange, lastTabNumber, onLastTabNumber
     onTabsChange([{ id: "_1", content: "" }])
     onLastTabNumberChange(1)
     setActiveTab("_1")
+  }
+
+  // Save the active tab's text to the stash, titled by the tab's name
+  const stashNote = async () => {
+    const current = tabs.find((t) => t.id === activeTab)
+    if (!current?.content) return
+    try {
+      const api = window.electronAPI
+      if (!api) throw new Error("Stash unavailable")
+      await api.saveStash(tabLabel(current), current.content)
+      setStashStatus("saved")
+    } catch {
+      setStashStatus("failed")
+    }
   }
 
   const formatJson = () => {
@@ -202,6 +224,21 @@ export function NotepadView({ tabs, onTabsChange, lastTabNumber, onLastTabNumber
           >
             <Code2 className="w-3.5 h-3.5" />
             <span>JSON</span>
+          </button>
+          <button
+            onClick={stashNote}
+            disabled={!current?.content}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-tab-hover rounded-md transition-colors disabled:opacity-40 disabled:pointer-events-none"
+            title={stashStatus === "failed" ? "Stash failed" : "Stash note"}
+          >
+            {stashStatus === "saved" ? (
+              <Check className="w-3.5 h-3.5 text-primary" />
+            ) : stashStatus === "failed" ? (
+              <X className="w-3.5 h-3.5 text-destructive" />
+            ) : (
+              <Archive className="w-3.5 h-3.5" />
+            )}
+            <span>Stash</span>
           </button>
           <button
             onClick={clearAll}

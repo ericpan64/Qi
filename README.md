@@ -15,6 +15,8 @@ Browsers are built for browsing. When you just need to check docs, look up an AP
 - **Show/hide** -- `Alt+Space` toggles the window globally, from any app
 - **Snap to edges** -- `Alt+Arrow` snaps the window to a screen edge so it sits beside your work
 - **Scratch pad** -- Jot notes, paste JSON, keep context without opening another app
+- **Rename tabs** -- Double-click any site or scratch pad tab to rename it. Site names are optional; scratch pad names must be unique
+- **Stash** -- Save the current page or scratch pad note for later. Search stashed items, and view saved pages as a rendered preview, raw source, or scraped text
 - **Remembers everything** -- Sites, notes, and window preferences persist across sessions
 
 ## Shortcuts
@@ -25,6 +27,7 @@ Browsers are built for browsing. When you just need to check docs, look up an AP
 | `Cmd+1` .. `Cmd+9` | Jump to site 1-9 |
 | `Alt+Left/Right/Up/Down` | Snap to screen edge |
 | `Alt+Enter` | Toggle fullscreen |
+| Double-click tab | Rename (`Enter` to save, `Esc` to cancel) |
 
 ## Run
 
