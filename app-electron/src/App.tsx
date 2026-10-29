@@ -23,7 +23,7 @@ export default function App() {
   const [loaded, setLoaded] = useState(false)
 
   // Notepad state (lifted for persistence)
-  const [scratchTabs, setScratchTabs] = useState<{ id: string; content: string }[]>([
+  const [scratchTabs, setScratchTabs] = useState<{ id: string; name?: string; content: string }[]>([
     { id: "_1", content: "" },
   ])
   const [lastTabNumber, setLastTabNumber] = useState(1)

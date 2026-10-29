@@ -14,7 +14,7 @@ interface ElectronAPI {
   loadStore: () => Promise<{
     websites: import('../App').PresetSite[];
     windowSizes: { leftWidth: number; rightWidth: number; topHeight: number; bottomHeight: number };
-    scratchTabs: { id: string; content: string }[];
+    scratchTabs: { id: string; name?: string; content: string }[];
     lastTabNumber?: number;
   }>;
   saveWebsites: (websites: unknown[]) => Promise<unknown>;

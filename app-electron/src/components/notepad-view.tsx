@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils"
 
 interface NoteTab {
   id: string
+  // User-chosen label; falls back to the id when unset
+  name?: string
   content: string
 }
 
@@ -16,6 +18,11 @@ interface NotepadViewProps {
 }
 
 const tabNumber = (id: string) => Number(id.slice(1)) || 0
+
+const tabLabel = (tab: NoteTab) => tab.name ?? tab.id
+
+const isDuplicateName = (tabs: NoteTab[], id: string, name: string) =>
+  tabs.some((t) => t.id !== id && tabLabel(t).toLowerCase() === name.toLowerCase())
 
 export const maxTabNumber = (tabs: NoteTab[]) =>
   tabs.reduce((max, t) => Math.max(max, tabNumber(t.id)), 0)
@@ -35,6 +42,33 @@ export function dedupeTabIds(tabs: NoteTab[]): NoteTab[] {
 export function NotepadView({ tabs, onTabsChange, lastTabNumber, onLastTabNumberChange }: NotepadViewProps) {
   const [activeTab, setActiveTab] = useState(tabs[0]?.id ?? "_1")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [draftName, setDraftName] = useState("")
+
+  const draftTrimmed = draftName.trim()
+  const draftIsDuplicate =
+    editingId !== null && draftTrimmed !== "" && isDuplicateName(tabs, editingId, draftTrimmed)
+
+  const startRename = (tab: NoteTab) => {
+    setEditingId(tab.id)
+    setDraftName(tabLabel(tab))
+  }
+
+  // Set on Escape so the blur fired as the input unmounts doesn't commit the discarded draft
+  const skipBlurCommit = useRef(false)
+
+  const cancelRename = () => setEditingId(null)
+
+  // Returns false (and keeps editing) when the name collides with another tab
+  const commitRename = () => {
+    if (editingId === null) return true
+    if (draftIsDuplicate) return false
+    // An empty name resets the tab to its default id label
+    const name = draftTrimmed === "" || draftTrimmed === editingId ? undefined : draftTrimmed
+    onTabsChange(tabs.map((t) => (t.id === editingId ? { ...t, name } : t)))
+    setEditingId(null)
+    return true
+  }
 
   const addTab = () => {
     const next = Math.max(lastTabNumber, maxTabNumber(tabs)) + 1
@@ -93,12 +127,46 @@ export function NotepadView({ tabs, onTabsChange, lastTabNumber, onLastTabNumber
               )}
               onClick={() => setActiveTab(tab.id)}
             >
-              <span className="text-xs font-mono">{tab.id}</span>
+              {editingId === tab.id ? (
+                <input
+                  autoFocus
+                  value={draftName}
+                  maxLength={40}
+                  size={Math.max(draftName.length, 2)}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitRename()
+                    else if (e.key === "Escape") { skipBlurCommit.current = true; cancelRename() }
+                  }}
+                  // Leaving the field with a duplicate name discards the edit rather than trapping focus
+                  onBlur={() => {
+                    if (skipBlurCommit.current) { skipBlurCommit.current = false; return }
+                    if (!commitRename()) cancelRename()
+                  }}
+                  spellCheck={false}
+                  aria-invalid={draftIsDuplicate}
+                  aria-label={`Rename tab ${tabLabel(tab)}`}
+                  className={cn(
+                    "text-xs font-mono bg-background text-foreground px-1 -mx-1 rounded-sm outline-none border",
+                    draftIsDuplicate ? "border-destructive ring-1 ring-destructive" : "border-border"
+                  )}
+                />
+              ) : (
+                <span
+                  className="text-xs font-mono max-w-[160px] truncate whitespace-pre"
+                  title="Double-click to rename"
+                  onDoubleClick={(e) => { e.stopPropagation(); startRename(tab) }}
+                >
+                  {tabLabel(tab)}
+                </span>
+              )}
               {tabs.length > 1 && (
                 <button
                   onClick={(e) => { e.stopPropagation(); closeTab(tab.id) }}
                   className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive-foreground"
-                  aria-label={`Close tab ${tab.id}`}
+                  aria-label={`Close tab ${tabLabel(tab)}`}
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -135,6 +203,14 @@ export function NotepadView({ tabs, onTabsChange, lastTabNumber, onLastTabNumber
       </div>
 
       <div className="flex-1 relative min-h-0">
+        {draftIsDuplicate && (
+          <div
+            role="alert"
+            className="absolute top-2 left-4 z-10 px-2.5 py-1.5 rounded-md text-xs font-mono bg-destructive text-destructive-foreground shadow-md pointer-events-none"
+          >
+            A tab named "{draftTrimmed}" already exists. Duplicate names aren't allowed.
+          </div>
+        )}
         <textarea
           ref={textareaRef}
           value={current?.content ?? ""}
