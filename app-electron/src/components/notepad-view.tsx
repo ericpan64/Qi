@@ -125,7 +125,14 @@ export function NotepadView({ tabs, onTabsChange, lastTabNumber, onLastTabNumber
                   ? "bg-background text-foreground border-b-2 border-b-tab-active"
                   : "text-muted-foreground hover:bg-tab-hover hover:text-foreground"
               )}
+              role="button"
+              tabIndex={0}
               onClick={() => setActiveTab(tab.id)}
+              onKeyDown={(e) => {
+                if (editingId === tab.id) return
+                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setActiveTab(tab.id) }
+                else if (e.key === "F2") { e.preventDefault(); startRename(tab) }
+              }}
             >
               {editingId === tab.id ? (
                 <input
@@ -138,7 +145,12 @@ export function NotepadView({ tabs, onTabsChange, lastTabNumber, onLastTabNumber
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") commitRename()
-                    else if (e.key === "Escape") { skipBlurCommit.current = true; cancelRename() }
+                    else if (e.key === "Escape") {
+                      // Blur before unmounting: removal alone doesn't reliably fire blur, which would leave the flag set
+                      skipBlurCommit.current = true
+                      e.currentTarget.blur()
+                      cancelRename()
+                    }
                   }}
                   // Leaving the field with a duplicate name discards the edit rather than trapping focus
                   onBlur={() => {
@@ -156,7 +168,7 @@ export function NotepadView({ tabs, onTabsChange, lastTabNumber, onLastTabNumber
               ) : (
                 <span
                   className="text-xs font-mono max-w-[160px] truncate whitespace-pre"
-                  title="Double-click to rename"
+                  title="Double-click or press F2 to rename"
                   onDoubleClick={(e) => { e.stopPropagation(); startRename(tab) }}
                 >
                   {tabLabel(tab)}

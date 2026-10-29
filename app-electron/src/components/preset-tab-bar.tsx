@@ -47,8 +47,9 @@ export function PresetTabBar({ sites, activeId, onSelect, onRename }: PresetTabB
             onKeyDown={(e) => {
               if (isEditing) return
               if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(site) }
+              else if (e.key === "F2") { e.preventDefault(); startRename(site) }
             }}
-            title="Double-click to rename"
+            title="Double-click or press F2 to rename"
             aria-label={site.label || hostname(site.url)}
             className={cn(
               "relative flex flex-col items-center justify-center px-4 min-w-[80px] max-w-[120px] shrink-0 cursor-pointer transition-colors duration-150 group",
@@ -73,7 +74,12 @@ export function PresetTabBar({ sites, activeId, onSelect, onRename }: PresetTabB
                 onDoubleClick={(e) => e.stopPropagation()}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") commitRename()
-                  else if (e.key === "Escape") { skipBlurCommit.current = true; setEditingId(null) }
+                  else if (e.key === "Escape") {
+                    // Blur before unmounting: removal alone doesn't reliably fire blur, which would leave the flag set
+                    skipBlurCommit.current = true
+                    e.currentTarget.blur()
+                    setEditingId(null)
+                  }
                 }}
                 onBlur={() => {
                   if (skipBlurCommit.current) { skipBlurCommit.current = false; return }
