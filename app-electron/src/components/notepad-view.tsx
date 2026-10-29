@@ -107,7 +107,9 @@ export function NotepadView({ tabs, onTabsChange, lastTabNumber, onLastTabNumber
     const current = tabs.find((t) => t.id === activeTab)
     if (!current?.content) return
     try {
-      await window.electronAPI?.saveStash(tabLabel(current), current.content)
+      const api = window.electronAPI
+      if (!api) throw new Error("Stash unavailable")
+      await api.saveStash(tabLabel(current), current.content)
       setStashStatus("saved")
     } catch {
       setStashStatus("failed")

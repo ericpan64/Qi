@@ -1,19 +1,38 @@
 import { Readability } from "@mozilla/readability"
 
 const BLOCKS = "h1, h2, h3, h4, h5, h6, p, li, blockquote, pre, td"
+// Groups text that sits outside any BLOCKS element, e.g. <div>Loose text</div>
+const CONTAINERS = "div, section, article, main, figcaption, dd, dt, th, body"
 const NOISE =
   "script, style, noscript, template, nav, header, footer, aside, form, button, dialog, [role=dialog], [role=navigation], [aria-hidden=true]"
 // Below this, Readability probably missed the main content (e.g. docs pages, not articles)
 const MIN_ARTICLE_CHARS = 200
 
-// Plain text from block elements, one per paragraph; nested blocks aren't repeated
-function blocksToText(root: ParentNode): string {
-  const blocks = Array.from(root.querySelectorAll<HTMLElement>(BLOCKS))
+// The outermost BLOCKS ancestor within root, so nested blocks aren't split or repeated
+function outermostBlock(el: Element, root: Element): Element | null {
+  let found: Element | null = null
+  for (let b = el.closest(BLOCKS); b && root.contains(b); b = b.parentElement?.closest(BLOCKS) ?? null) {
+    found = b
+  }
+  return found
+}
+
+// Plain text in document order, one paragraph per block (or per container for loose text)
+function blocksToText(root: Element): string {
+  const units: { el: Element; raw: string }[] = []
+  const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const parent = node.parentElement
+    if (!parent) continue
+    const el = outermostBlock(parent, root) ?? parent.closest(CONTAINERS) ?? root
+    const last = units[units.length - 1]
+    if (last?.el === el) last.raw += node.nodeValue ?? ""
+    else if (node.nodeValue?.trim()) units.push({ el, raw: node.nodeValue })
+  }
+
   let out = ""
   let prevWasItem = false
-  for (const el of blocks) {
-    if (el.parentElement?.closest(BLOCKS)) continue
-    const raw = el.textContent ?? ""
+  for (const { el, raw } of units) {
     const text = el.tagName === "PRE" ? raw.trimEnd() : raw.replace(/\s+/g, " ").trim()
     if (!text) continue
     const isItem = el.tagName === "LI"

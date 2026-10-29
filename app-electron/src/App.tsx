@@ -16,9 +16,11 @@ export interface PresetSite {
 
 export type ViewMode = "browser" | "notepad" | "settings" | "stash"
 
-// Record the page URL in stashed HTML so relative CSS/images resolve when rendered later
+// Record the page's absolute base URL in stashed HTML so relative CSS/images resolve when
+// rendered later. Any existing <base> is replaced: a relative one would resolve against Qi.
 function withBaseHref(html: string, url: string): string {
-  if (!url || /<base[\s>]/i.test(html)) return html
+  if (!url) return html
+  html = html.replace(/<base\b[^>]*>/gi, "")
   const tag = `<base href="${url.replace(/&/g, "&amp;").replace(/"/g, "&quot;")}">`
   const head = html.match(/<head[^>]*>/i)
   if (!head || head.index === undefined) return tag + html
@@ -165,9 +167,14 @@ export default function App() {
     const wv = activeId ? webviewRefs.current[activeId] : null
     if (!wv) return false
     try {
-      const html = await wv.executeJavaScript<string>("document.documentElement.outerHTML")
+      const api = window.electronAPI
+      if (!api) throw new Error("Stash unavailable")
+      // baseURI is already absolute and accounts for any <base> the page sets
+      const { html, baseURI } = await wv.executeJavaScript<{ html: string; baseURI: string }>(
+        "({ html: document.documentElement.outerHTML, baseURI: document.baseURI })"
+      )
       const title = wv.getTitle() || activeSite?.label || "page"
-      await window.electronAPI?.saveStash(title, withBaseHref(html, wv.getURL()))
+      await api.saveStash(title, withBaseHref(html, baseURI))
       return true
     } catch {
       return false
