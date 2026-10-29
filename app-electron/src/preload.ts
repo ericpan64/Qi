@@ -4,7 +4,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadStore: () => ipcRenderer.invoke('store:load'),
   saveWebsites: (websites: unknown[]) => ipcRenderer.invoke('store:saveWebsites', websites),
   saveWindowSizes: (sizes: unknown) => ipcRenderer.invoke('store:saveWindowSizes', sizes),
-  saveScratchTabs: (tabs: unknown[]) => ipcRenderer.invoke('store:saveScratchTabs', tabs),
+  saveScratchTabs: (tabs: unknown[], lastTabNumber: number) => ipcRenderer.invoke('store:saveScratchTabs', tabs, lastTabNumber),
   listStash: () => ipcRenderer.invoke('stash:list'),
   searchStash: (query: string) => ipcRenderer.invoke('stash:search', query),
   readStash: (name: string) => ipcRenderer.invoke('stash:read', name),

@@ -25,7 +25,8 @@ interface WindowSizes {
 interface StoreData {
   websites: Website[];
   windowSizes: WindowSizes;
-  scratchTabs: { id: string; content: string }[];
+  scratchTabs: { id: string; name?: string; content: string }[];
+  lastTabNumber?: number;
 }
 
 const DEFAULT_DATA: StoreData = {
@@ -281,9 +282,10 @@ function registerIpc(): void {
     return data.windowSizes;
   });
 
-  ipcMain.handle('store:saveScratchTabs', (_e, tabs: { id: string; content: string }[]) => {
+  ipcMain.handle('store:saveScratchTabs', (_e, tabs: { id: string; name?: string; content: string }[], lastTabNumber: number) => {
     const data = readStore();
     data.scratchTabs = tabs;
+    data.lastTabNumber = lastTabNumber;
     writeStore(data);
     return data.scratchTabs;
   });
