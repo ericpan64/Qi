@@ -55,7 +55,7 @@ function readStore(): StoreData {
       }));
     }
 
-    // Normalize legacy windowSizes keys (e.g. leftWidthPercent → leftWidth)
+    // Normalize legacy windowSizes keys (e.g. leftWidthPercent becomes leftWidth)
     const ws = parsed.windowSizes as Record<string, unknown>;
     parsed.windowSizes = {
       leftWidth: (ws.leftWidth as number) ?? (ws.leftWidthPercent as number) ?? DEFAULT_DATA.windowSizes.leftWidth,
@@ -325,8 +325,8 @@ function registerShortcuts(): void {
     });
   });
 
-  // Tab shortcuts: Cmd/Ctrl+1..9 are intercepted via before-input-event
-  // in createWindow() and forwarded to the renderer via IPC.
+  // Tab shortcuts: createWindow() intercepts Cmd/Ctrl+1..9 in before-input-event
+  // and forwards them to the renderer over IPC.
 }
 
 // --- App Lifecycle ---

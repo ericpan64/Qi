@@ -66,7 +66,7 @@ function AddSiteModal({ onAdd, onClose, nextShortcut }: {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-semibold text-foreground">Add Website</h2>
+          <h2 className="text-base font-semibold text-foreground">Add website</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-4 h-4" />
           </button>
@@ -158,7 +158,7 @@ export function SettingsView({ sites, onSitesChange }: SettingsViewProps) {
         )}
 
         <div className="border-t border-border pt-8">
-          <h2 className="text-sm font-semibold text-foreground mb-1">Window Size</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-1">Window size</h2>
           <p className="text-xs text-muted-foreground mb-5">Configure default positioning percentages</p>
           <div className="grid grid-cols-2 gap-4 max-w-sm">
             {(["leftWidth", "rightWidth", "topHeight", "bottomHeight"] as const).map((key) => (
