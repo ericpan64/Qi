@@ -188,6 +188,12 @@ function createWindow(): void {
     );
   }
 
+  // Links in rendered markdown notes open in the system browser, never in a new app window
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^(https?:|mailto:)/i.test(url)) shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
   // Block Chromium's default Alt+Arrow navigation (back/forward)
   mainWindow.webContents.on('before-input-event', (_event, input) => {
     if (input.alt && !input.control && !input.meta && !input.shift) {
