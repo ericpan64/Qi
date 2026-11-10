@@ -1,5 +1,6 @@
 import Markdown, { type Components } from "react-markdown"
 import remarkGfm from "remark-gfm"
+import { MermaidDiagram } from "@/components/mermaid-diagram"
 
 const EXTERNAL_URL = /^(https?:|mailto:)/i
 
@@ -14,6 +15,18 @@ const components: Components = {
     ) : (
       <span>{children}</span>
     ),
+  pre: ({ node, ...props }) => {
+    const code = node?.children[0]
+    if (
+      code?.type === "element" &&
+      Array.isArray(code.properties.className) &&
+      code.properties.className.includes("language-mermaid")
+    ) {
+      const text = code.children[0]
+      return <MermaidDiagram source={text?.type === "text" ? text.value.trim() : ""} />
+    }
+    return <pre {...props} />
+  },
 }
 
 export function MarkdownView({ source }: { source: string }) {

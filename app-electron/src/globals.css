@@ -171,4 +171,15 @@
   .markdown-body img {
     max-width: 100%;
   }
+  .markdown-body .mermaid-diagram {
+    margin: 0 0 0.9em;
+    overflow-x: auto;
+  }
+  .markdown-body .mermaid-diagram svg {
+    max-width: 100%;
+    height: auto;
+  }
+  .markdown-body pre:has(+ .mermaid-error) {
+    margin-bottom: 0.4em;
+  }
 }
