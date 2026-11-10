@@ -1,1 +1,7 @@
+allowBuilds:
+  electron: true
+  esbuild: true
+  fs-xattr: true
+  macos-alias: true
 approveBuilds: electron esbuild fs-xattr macos-alias
+nodeLinker: hoisted
