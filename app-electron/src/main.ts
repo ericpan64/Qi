@@ -55,7 +55,7 @@ function readStore(): StoreData {
       }));
     }
 
-    // Normalize legacy windowSizes keys (e.g. leftWidthPercent → leftWidth)
+    // Normalize legacy windowSizes keys (e.g. leftWidthPercent becomes leftWidth)
     const ws = parsed.windowSizes as Record<string, unknown>;
     parsed.windowSizes = {
       leftWidth: (ws.leftWidth as number) ?? (ws.leftWidthPercent as number) ?? DEFAULT_DATA.windowSizes.leftWidth,
@@ -187,6 +187,12 @@ function createWindow(): void {
       path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`)
     );
   }
+
+  // Links in rendered markdown notes open in the system browser, never in a new app window
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^(https?:|mailto:)/i.test(url)) shell.openExternal(url);
+    return { action: 'deny' };
+  });
 
   // Block Chromium's default Alt+Arrow navigation (back/forward)
   mainWindow.webContents.on('before-input-event', (_event, input) => {
@@ -325,8 +331,8 @@ function registerShortcuts(): void {
     });
   });
 
-  // Tab shortcuts: Cmd/Ctrl+1..9 are intercepted via before-input-event
-  // in createWindow() and forwarded to the renderer via IPC.
+  // Tab shortcuts: createWindow() intercepts Cmd/Ctrl+1..9 in before-input-event
+  // and forwards them to the renderer over IPC.
 }
 
 // --- App Lifecycle ---

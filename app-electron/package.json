@@ -15,8 +15,11 @@
     "@mozilla/readability": "0.6.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.564.0",
+    "mermaid": "^11.17.2",
     "react": "^19",
     "react-dom": "^19",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "scheduler": "^0.27.0",
     "tailwind-merge": "^3.3.1"
   },

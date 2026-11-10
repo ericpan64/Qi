@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react"
-import { X, Plus, Trash2, Code2, Archive, Check } from "lucide-react"
+import { X, Plus, Trash2, Code2, Archive, Check, Eye } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { MarkdownView } from "@/components/markdown-view"
 
 interface NoteTab {
   id: string
@@ -45,6 +46,15 @@ export function NotepadView({ tabs, onTabsChange, lastTabNumber, onLastTabNumber
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draftName, setDraftName] = useState("")
   const [stashStatus, setStashStatus] = useState<"idle" | "saved" | "failed">("idle")
+  // Tabs showing rendered markdown instead of the editor. Each tab keeps its own mode.
+  const [previewIds, setPreviewIds] = useState<ReadonlySet<string>>(new Set())
+  const previewing = previewIds.has(activeTab)
+
+  const togglePreview = () => {
+    const next = new Set(previewIds)
+    if (!next.delete(activeTab)) next.add(activeTab)
+    setPreviewIds(next)
+  }
 
   // Brief checkmark (or X on failure) after a stash attempt
   useEffect(() => {
@@ -100,6 +110,7 @@ export function NotepadView({ tabs, onTabsChange, lastTabNumber, onLastTabNumber
     onTabsChange([{ id: "_1", content: "" }])
     onLastTabNumberChange(1)
     setActiveTab("_1")
+    setPreviewIds(new Set())
   }
 
   // Save the active tab's text to the stash, titled by the tab's name
@@ -226,6 +237,18 @@ export function NotepadView({ tabs, onTabsChange, lastTabNumber, onLastTabNumber
             <span>JSON</span>
           </button>
           <button
+            onClick={togglePreview}
+            aria-pressed={previewing}
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono hover:text-foreground hover:bg-tab-hover rounded-md transition-colors",
+              previewing ? "text-foreground bg-tab-hover" : "text-muted-foreground"
+            )}
+            title={previewing ? "Back to editing" : "Preview markdown"}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>MD</span>
+          </button>
+          <button
             onClick={stashNote}
             disabled={!current?.content}
             className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-tab-hover rounded-md transition-colors disabled:opacity-40 disabled:pointer-events-none"
@@ -260,19 +283,23 @@ export function NotepadView({ tabs, onTabsChange, lastTabNumber, onLastTabNumber
             A tab named "{draftTrimmed}" already exists. Duplicate names aren't allowed.
           </div>
         )}
-        <textarea
-          ref={textareaRef}
-          value={current?.content ?? ""}
-          onChange={(e) => updateContent(e.target.value)}
-          placeholder="Start typing..."
-          spellCheck={false}
-          className={cn(
-            "w-full h-full resize-none bg-background text-foreground",
-            "font-mono text-sm leading-relaxed p-4",
-            "outline-none border-0 placeholder:text-muted-foreground/40",
-            "selection:bg-primary/30"
-          )}
-        />
+        {previewing ? (
+          <MarkdownView source={current?.content ?? ""} />
+        ) : (
+          <textarea
+            ref={textareaRef}
+            value={current?.content ?? ""}
+            onChange={(e) => updateContent(e.target.value)}
+            placeholder="Start typing..."
+            spellCheck={false}
+            className={cn(
+              "w-full h-full resize-none bg-background text-foreground",
+              "font-mono text-sm leading-relaxed p-4",
+              "outline-none border-0 placeholder:text-muted-foreground/40",
+              "selection:bg-primary/30"
+            )}
+          />
+        )}
         <div className="absolute bottom-3 right-4 text-[10px] font-mono text-muted-foreground/40 pointer-events-none">
           {(current?.content ?? "").split("\n").length} ln {'\u00B7'} {(current?.content ?? "").length} ch
         </div>

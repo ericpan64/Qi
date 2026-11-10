@@ -17,7 +17,7 @@ export interface PresetSite {
 export type ViewMode = "browser" | "notepad" | "settings" | "stash"
 
 // Record the page's absolute base URL in stashed HTML so relative CSS/images resolve when
-// rendered later. Any existing <base> is replaced: a relative one would resolve against Qi.
+// rendered later. Replace any existing <base>, because a relative one would resolve against Qi.
 function withBaseHref(html: string, url: string): string {
   if (!url) return html
   html = html.replace(/<base\b[^>]*>/gi, "")
@@ -212,7 +212,7 @@ export default function App() {
           )}
           {view === "stash" && <StashView />}
 
-          {/* Toolbar — only visible in browser mode */}
+          {/* Toolbar, only visible in browser mode */}
           {view === "browser" && (
             <BrowserToolbar
               canGoBack={activeNav.canGoBack}
@@ -226,7 +226,7 @@ export default function App() {
             />
           )}
 
-          {/* Browser pane — always mounted to preserve webview state */}
+          {/* Browser pane, always mounted to preserve webview state */}
           <div
             className="flex-1 relative min-h-0"
             style={{ display: view === "browser" ? "flex" : "none" }}
