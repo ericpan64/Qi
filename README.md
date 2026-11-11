@@ -15,7 +15,7 @@ Checking docs or an API reference in a full browser means switching apps and fin
 - **Scratch pad** -- Jot notes, paste JSON, keep context without opening another app
 - **Rename tabs** -- Double-click any site or scratch pad tab to rename it. Site names are optional; scratch pad names must be unique
 - **Stash** -- Save the current page or scratch pad note for later. Search stashed items, and view saved pages as a rendered preview, raw source, or scraped text
-- **Lists** -- Track a goal with a checklist of actions to reach it. The goal stays locked to prevent accidental edits; unlock it to change it. Stash a list to save it as a markdown checklist
+- **Lists** -- Track a goal with a checklist of actions to reach it. The goal stays locked to prevent accidental edits; unlock it to change it. Each list shows the date you created it, takes an optional target date, and records the date you checked off the last action. Stash a list to save it as a markdown checklist
 - **Remembers everything** -- Sites, notes, and window preferences persist across sessions
 
 ## Shortcuts

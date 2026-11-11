@@ -11,12 +11,61 @@ function progress(list: QiList) {
   return { done: list.items.filter((i) => i.done).length, total: list.items.length }
 }
 
+const pad = (n: number) => String(n).padStart(2, "0")
+
+// Local calendar day as YYYY-MM-DD, the same shape as targetDate
+function dayOf(ms: number): string {
+  const d = new Date(ms)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+// Local midnight. new Date("YYYY-MM-DD") would parse the day as UTC and can shift it by one.
+function localDate(day: string): Date {
+  const [y, m, d] = day.split("-").map(Number)
+  return new Date(y, m - 1, d)
+}
+
+function formatDay(day: string, withYear = true): string {
+  return localDate(day).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    ...(withYear ? { year: "numeric" } : {}),
+  })
+}
+
+// How a completion day compares with the target day
+function timing(target: string, completed: string): string {
+  const days = Math.round((localDate(target).getTime() - localDate(completed).getTime()) / 86_400_000)
+  if (days === 0) return "on time"
+  const n = Math.abs(days)
+  return `${n} ${n === 1 ? "day" : "days"} ${days > 0 ? "early" : "late"}`
+}
+
+function isOverdue(list: QiList): boolean {
+  return list.completedAt === undefined && !!list.targetDate && list.targetDate < dayOf(Date.now())
+}
+
+// Replace a list's items and keep its completion date in step: stamp it when every item
+// becomes done, clear it when a done item is unchecked, and otherwise leave it alone, so
+// adding items to a completed list keeps the original date.
+export function withItems(list: QiList, items: ListItem[], now = Date.now()): QiList {
+  const wasDone = new Set(list.items.filter((i) => i.done).map((i) => i.id))
+  const next: QiList = { ...list, items }
+  if (items.some((i) => !i.done && wasDone.has(i.id))) delete next.completedAt
+  else if (next.completedAt === undefined && items.length > 0 && items.every((i) => i.done)) next.completedAt = now
+  return next
+}
+
 // The goal's first line becomes the heading; any further lines follow as a paragraph
 export function listToMarkdown(list: QiList): string {
   const [heading, ...rest] = list.goal.trim().split("\n")
   const parts = [`# ${heading?.trim() || "Untitled goal"}`]
   const body = rest.join("\n").trim()
   if (body) parts.push(body)
+  const dates = [`Created ${dayOf(list.createdAt)}.`]
+  if (list.targetDate) dates.push(`Target ${list.targetDate}.`)
+  if (list.completedAt !== undefined) dates.push(`Completed ${dayOf(list.completedAt)}.`)
+  parts.push(dates.join(" "))
   const items = list.items
     .filter((i) => i.text.trim())
     .map((i) => `- [${i.done ? "x" : " "}] ${i.text.trim()}`)
@@ -76,7 +125,18 @@ export function ListsView({ lists, onListsChange }: ListsViewProps) {
   }
 
   const updateItems = (fn: (items: ListItem[]) => ListItem[]) => {
-    if (selected) updateList(selected.id, (l) => ({ ...l, items: fn(l.items) }))
+    if (selected) updateList(selected.id, (l) => withItems(l, fn(l.items)))
+  }
+
+  // An empty value from the date input removes the target
+  const setTargetDate = (value: string) => {
+    if (!selected) return
+    updateList(selected.id, (l) => {
+      const next = { ...l }
+      if (value) next.targetDate = value
+      else delete next.targetDate
+      return next
+    })
   }
 
   const addList = () => {
@@ -210,8 +270,15 @@ export function ListsView({ lists, onListsChange }: ListsViewProps) {
                     <span className={cn("block text-xs truncate", !list.goal.trim() && "italic text-muted-foreground/60")} title={list.goal}>
                       {list.goal.trim() || "Untitled goal"}
                     </span>
-                    <span className="block text-[10px] font-mono text-muted-foreground/60">
+                    <span className="block text-[10px] font-mono text-muted-foreground/60 truncate">
                       {p.done}/{p.total} done
+                      {list.completedAt !== undefined ? (
+                        <> · done {formatDay(dayOf(list.completedAt), false)}</>
+                      ) : list.targetDate ? (
+                        <span className={cn(isOverdue(list) && "text-destructive")}>
+                          {" "}· due {formatDay(list.targetDate, false)}
+                        </span>
+                      ) : null}
                     </span>
                   </span>
                 </button>
@@ -274,7 +341,29 @@ export function ListsView({ lists, onListsChange }: ListsViewProps) {
                 </p>
               )}
 
-              <div className="flex items-center gap-3 mt-5 mb-2">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 px-3 text-xs font-mono text-muted-foreground">
+                <span>Created {formatDay(dayOf(selected.createdAt))}</span>
+                <label className="flex items-center gap-1.5">
+                  <span>Target</span>
+                  <input
+                    type="date"
+                    value={selected.targetDate ?? ""}
+                    onChange={(e) => setTargetDate(e.target.value)}
+                    className={cn(
+                      "bg-transparent rounded px-1 outline-none hover:bg-tab-hover focus:bg-tab-hover",
+                      isOverdue(selected) && "text-destructive"
+                    )}
+                  />
+                </label>
+                {selected.completedAt !== undefined && (
+                  <span className="text-primary">
+                    Completed {formatDay(dayOf(selected.completedAt))}
+                    {selected.targetDate && ` (${timing(selected.targetDate, dayOf(selected.completedAt))})`}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 mt-4 mb-2">
                 <div className="flex-1 h-1 rounded-full bg-border overflow-hidden">
                   <div
                     className="h-full bg-primary transition-[width] duration-300"

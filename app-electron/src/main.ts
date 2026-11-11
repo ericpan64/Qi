@@ -41,6 +41,8 @@ interface QiList {
   goal: string;
   items: ListItem[];
   createdAt: number;
+  targetDate?: string;
+  completedAt?: number;
 }
 
 // Coerce persisted lists into the expected shape so a hand-edited store can't crash the view.
@@ -60,6 +62,12 @@ function normalizeLists(raw: unknown): QiList[] {
       id: uniqueId(l.id),
       goal: typeof l.goal === 'string' ? l.goal : '',
       createdAt: typeof l.createdAt === 'number' ? l.createdAt : Date.now(),
+      ...(typeof l.targetDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(l.targetDate)
+        ? { targetDate: l.targetDate }
+        : {}),
+      ...(typeof l.completedAt === 'number' && Number.isFinite(l.completedAt)
+        ? { completedAt: l.completedAt }
+        : {}),
       items: (Array.isArray(l.items) ? l.items : [])
         .filter((i): i is Record<string, unknown> => !!i && typeof i === 'object')
         .map((i) => ({
