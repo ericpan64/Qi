@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveWebsites: (websites: unknown[]) => ipcRenderer.invoke('store:saveWebsites', websites),
   saveWindowSizes: (sizes: unknown) => ipcRenderer.invoke('store:saveWindowSizes', sizes),
   saveScratchTabs: (tabs: unknown[], lastTabNumber: number) => ipcRenderer.invoke('store:saveScratchTabs', tabs, lastTabNumber),
+  saveLists: (lists: unknown[]) => ipcRenderer.invoke('store:saveLists', lists),
+  saveListsSync: (lists: unknown[]) => ipcRenderer.sendSync('store:saveListsSync', lists),
   listStash: () => ipcRenderer.invoke('stash:list'),
   searchStash: (query: string) => ipcRenderer.invoke('stash:search', query),
   readStash: (name: string) => ipcRenderer.invoke('stash:read', name),

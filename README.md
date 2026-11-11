@@ -8,14 +8,15 @@ Checking docs or an API reference in a full browser means switching apps and fin
 
 ## What it does
 
-- Saves up to 9 preset sites, such as docs, search, wikis, and dashboards.
-- Jumps to a site with `Cmd+1` through `Cmd+9`.
-- Shows or hides the window from any app with `Alt+Space`.
-- Snaps the window to a screen edge with `Alt+Arrow`, so it sits beside your work.
-- Includes scratch pads for notes and pasted text such as JSON.
-- Renames a site or scratch pad tab when you double-click it. Site names are optional. Scratch pad names must be unique.
-- Stashes the current page or scratch pad note for later. You can search stashed items and view a saved page as a rendered preview, raw source, or scraped text.
-- Keeps sites, notes, and window preferences across sessions.
+- **Preset sites** -- Save up to 9 reference websites (docs, search, wikis, dashboards)
+- **One-key switching** -- `Cmd+1` through `Cmd+9` jumps directly to a site
+- **Show/hide** -- `Alt+Space` toggles the window globally, from any app
+- **Snap to edges** -- `Alt+Arrow` snaps the window to a screen edge so it sits beside your work
+- **Scratch pad** -- Jot notes, paste JSON, keep context without opening another app
+- **Rename tabs** -- Double-click any site or scratch pad tab to rename it. Site names are optional; scratch pad names must be unique
+- **Stash** -- Save the current page or scratch pad note for later. Search stashed items, and view saved pages as a rendered preview, raw source, or scraped text
+- **Lists** -- Track a goal with a checklist of actions to reach it. The goal stays locked to prevent accidental edits; unlock it to change it. Stash a list to save it as a markdown checklist
+- **Remembers everything** -- Sites, notes, and window preferences persist across sessions
 
 ## Shortcuts
 

@@ -6,6 +6,7 @@ import { NotepadView, dedupeTabIds, maxTabNumber } from "@/components/notepad-vi
 import { SettingsView } from "@/components/settings-view"
 import { LeftSidebar } from "@/components/left-sidebar"
 import { StashView } from "@/components/stash-view"
+import { ListsView } from "@/components/lists-view"
 
 export interface PresetSite {
   id: string
@@ -14,7 +15,7 @@ export interface PresetSite {
   shortcut: number | string
 }
 
-export type ViewMode = "browser" | "notepad" | "settings" | "stash"
+export type ViewMode = "browser" | "notepad" | "settings" | "stash" | "lists"
 
 // Record the page's absolute base URL in stashed HTML so relative CSS/images resolve when
 // rendered later. Replace any existing <base>, because a relative one would resolve against Qi.
@@ -41,6 +42,9 @@ export default function App() {
   const [lastTabNumber, setLastTabNumber] = useState(1)
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const [lists, setLists] = useState<QiList[]>([])
+  const listsSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Browser navigation state
   const webviewRefs = useRef<Record<string, WebviewElement | null>>({})
   const [navStates, setNavStates] = useState<Record<string, NavState>>({})
@@ -57,6 +61,7 @@ export default function App() {
         setScratchTabs(tabs)
         setLastTabNumber(Math.max(data.lastTabNumber ?? 0, maxTabNumber(tabs)))
       }
+      if (data.lists?.length) setLists(data.lists)
       setLoaded(true)
     }).catch(() => setLoaded(true))
   }, [])
@@ -70,6 +75,30 @@ export default function App() {
     }, 500)
     return () => { if (saveTimeout.current) clearTimeout(saveTimeout.current) }
   }, [scratchTabs, lastTabNumber, loaded])
+
+  // Auto-save lists (debounced). pendingLists holds an edit the timer hasn't written yet.
+  const pendingLists = useRef<QiList[] | null>(null)
+  useEffect(() => {
+    if (!loaded) return
+    pendingLists.current = lists
+    if (listsSaveTimeout.current) clearTimeout(listsSaveTimeout.current)
+    listsSaveTimeout.current = setTimeout(() => {
+      pendingLists.current = null
+      window.electronAPI?.saveLists(lists)
+    }, 500)
+    return () => { if (listsSaveTimeout.current) clearTimeout(listsSaveTimeout.current) }
+  }, [lists, loaded])
+
+  // Quitting tears the renderer down before the debounce fires, so write any pending edit now
+  useEffect(() => {
+    const flush = () => {
+      if (!pendingLists.current) return
+      window.electronAPI?.saveListsSync(pendingLists.current)
+      pendingLists.current = null
+    }
+    window.addEventListener("beforeunload", flush)
+    return () => window.removeEventListener("beforeunload", flush)
+  }, [])
 
   // Persist websites when they change
   useEffect(() => {
@@ -188,6 +217,7 @@ export default function App() {
         onSettings={() => setView("settings")}
         onNotepad={() => setView("notepad")}
         onStash={() => setView("stash")}
+        onLists={() => setView("lists")}
       />
 
       <div className="flex flex-col flex-1 min-w-0">
@@ -211,6 +241,7 @@ export default function App() {
             />
           )}
           {view === "stash" && <StashView />}
+          {view === "lists" && <ListsView lists={lists} onListsChange={setLists} />}
 
           {/* Toolbar, only visible in browser mode */}
           {view === "browser" && (

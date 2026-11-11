@@ -27,12 +27,54 @@ interface StoreData {
   windowSizes: WindowSizes;
   scratchTabs: { id: string; name?: string; content: string }[];
   lastTabNumber?: number;
+  lists: QiList[];
+}
+
+interface ListItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+interface QiList {
+  id: string;
+  goal: string;
+  items: ListItem[];
+  createdAt: number;
+}
+
+// Coerce persisted lists into the expected shape so a hand-edited store can't crash the view.
+// IDs must be unique: the view selects, updates, and deletes by ID, so a duplicate would act on
+// every list (or item) sharing it.
+function normalizeLists(raw: unknown): QiList[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const uniqueId = (id: unknown): string => {
+    const next = typeof id === 'string' && id && !seen.has(id) ? id : crypto.randomUUID();
+    seen.add(next);
+    return next;
+  };
+  return raw
+    .filter((l): l is Record<string, unknown> => !!l && typeof l === 'object')
+    .map((l) => ({
+      id: uniqueId(l.id),
+      goal: typeof l.goal === 'string' ? l.goal : '',
+      createdAt: typeof l.createdAt === 'number' ? l.createdAt : Date.now(),
+      items: (Array.isArray(l.items) ? l.items : [])
+        .filter((i): i is Record<string, unknown> => !!i && typeof i === 'object')
+        .map((i) => ({
+          id: uniqueId(i.id),
+          text: typeof i.text === 'string' ? i.text : '',
+          done: i.done === true,
+        })),
+    }));
 }
 
 const DEFAULT_DATA: StoreData = {
   websites: [],
   windowSizes: { leftWidth: 60, rightWidth: 60, topHeight: 60, bottomHeight: 60 },
   scratchTabs: [{ id: '_1', content: '' }],
+  lists: [],
 };
 
 function getStorePath(): string {
@@ -63,6 +105,8 @@ function readStore(): StoreData {
       topHeight: (ws.topHeight as number) ?? (ws.topHeightPercent as number) ?? DEFAULT_DATA.windowSizes.topHeight,
       bottomHeight: (ws.bottomHeight as number) ?? (ws.bottomHeightPercent as number) ?? DEFAULT_DATA.windowSizes.bottomHeight,
     };
+
+    parsed.lists = normalizeLists(parsed.lists);
 
     return parsed;
   } catch {
@@ -294,6 +338,21 @@ function registerIpc(): void {
     data.lastTabNumber = lastTabNumber;
     writeStore(data);
     return data.scratchTabs;
+  });
+
+  ipcMain.handle('store:saveLists', (_e, lists: QiList[]) => {
+    const data = readStore();
+    data.lists = lists;
+    writeStore(data);
+    return data.lists;
+  });
+
+  // Blocking variant for the renderer's unload flush: an async invoke may not finish before teardown
+  ipcMain.on('store:saveListsSync', (e, lists: QiList[]) => {
+    const data = readStore();
+    data.lists = lists;
+    writeStore(data);
+    e.returnValue = true;
   });
 
   ipcMain.handle('stash:list', () => listStash());
