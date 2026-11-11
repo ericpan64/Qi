@@ -16,10 +16,12 @@ interface ElectronAPI {
     windowSizes: { leftWidth: number; rightWidth: number; topHeight: number; bottomHeight: number };
     scratchTabs: { id: string; name?: string; content: string }[];
     lastTabNumber?: number;
+    lists?: QiList[];
   }>;
   saveWebsites: (websites: unknown[]) => Promise<unknown>;
   saveWindowSizes: (sizes: unknown) => Promise<unknown>;
   saveScratchTabs: (tabs: unknown[], lastTabNumber: number) => Promise<unknown>;
+  saveLists: (lists: QiList[]) => Promise<unknown>;
   listStash: () => Promise<StashEntry[]>;
   searchStash: (query: string) => Promise<StashEntry[]>;
   readStash: (name: string) => Promise<string>;
@@ -35,6 +37,19 @@ declare global {
     size: number;
     mtime: number;
     snippet?: string;
+  }
+
+  interface ListItem {
+    id: string;
+    text: string;
+    done: boolean;
+  }
+
+  interface QiList {
+    id: string;
+    goal: string;
+    items: ListItem[];
+    createdAt: number;
   }
 
   interface Window {

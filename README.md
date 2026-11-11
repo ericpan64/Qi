@@ -17,6 +17,7 @@ Browsers are built for browsing. When you just need to check docs, look up an AP
 - **Scratch pad** -- Jot notes, paste JSON, keep context without opening another app
 - **Rename tabs** -- Double-click any site or scratch pad tab to rename it. Site names are optional; scratch pad names must be unique
 - **Stash** -- Save the current page or scratch pad note for later. Search stashed items, and view saved pages as a rendered preview, raw source, or scraped text
+- **Lists** -- Track a goal with a checklist of actions to reach it. The goal stays locked to prevent accidental edits; unlock it to change it. Stash a list to save it as a markdown checklist
 - **Remembers everything** -- Sites, notes, and window preferences persist across sessions
 
 ## Shortcuts
