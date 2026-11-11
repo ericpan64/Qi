@@ -18,4 +18,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('switch-tab', handler);
     return () => ipcRenderer.removeListener('switch-tab', handler);
   },
+  setSwitcherOpen: (open: boolean) => ipcRenderer.send('switcher:open', open),
+  onSwitcher: (callback: (action: string) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, action: string) => callback(action);
+    ipcRenderer.on('switcher', handler);
+    return () => ipcRenderer.removeListener('switcher', handler);
+  },
 });

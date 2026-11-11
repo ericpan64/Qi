@@ -4,7 +4,8 @@ import { BrowserView, type NavState } from "@/components/browser-view"
 import { BrowserToolbar } from "@/components/browser-toolbar"
 import { NotepadView, dedupeTabIds, maxTabNumber } from "@/components/notepad-view"
 import { SettingsView } from "@/components/settings-view"
-import { LeftSidebar } from "@/components/left-sidebar"
+import { LeftSidebar, NAV_ITEMS } from "@/components/left-sidebar"
+import { ViewSwitcher, stepSwitcher } from "@/components/view-switcher"
 import { StashView } from "@/components/stash-view"
 import { ListsView } from "@/components/lists-view"
 
@@ -153,6 +154,37 @@ export default function App() {
     })
   }, [sites])
 
+  // View switcher (Alt+Tab). The main process sends the key actions, because key events from a
+  // focused webview never reach this page. The handler reads refs so it subscribes once.
+  const [switcherIndex, setSwitcherIndex] = useState<number | null>(null)
+  const switcher = useRef({ open: null as number | null, navIndex: 0, lastNavIndex: 0 })
+
+  // Tell the main process too, so it captures Enter and Escape only while the switcher shows
+  const setSwitcher = useCallback((index: number | null) => {
+    switcher.current.open = index
+    setSwitcherIndex(index)
+    window.electronAPI?.setSwitcherOpen(index !== null)
+  }, [])
+
+  // navIndex is -1 while a site is showing; lastNavIndex keeps the sidebar view used last
+  useEffect(() => {
+    const navIndex = NAV_ITEMS.findIndex((item) => item.view === view)
+    switcher.current.navIndex = navIndex
+    if (navIndex >= 0) switcher.current.lastNavIndex = navIndex
+  }, [view])
+
+  useEffect(() => {
+    return window.electronAPI?.onSwitcher((action) => {
+      const { open, navIndex, lastNavIndex } = switcher.current
+      if (action === "next" || action === "prev") {
+        setSwitcher(stepSwitcher(open, action === "next" ? 1 : -1, navIndex, lastNavIndex, NAV_ITEMS.length))
+        return
+      }
+      if (action === "commit" && open !== null) setView(NAV_ITEMS[open].view)
+      setSwitcher(null)
+    })
+  }, [setSwitcher])
+
   const handleSelectSite = (site: PresetSite) => {
     setActiveId(site.id)
     setView("browser")
@@ -212,13 +244,14 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground font-sans">
-      <LeftSidebar
-        activeView={view}
-        onSettings={() => setView("settings")}
-        onNotepad={() => setView("notepad")}
-        onStash={() => setView("stash")}
-        onLists={() => setView("lists")}
-      />
+      <LeftSidebar activeView={view} onSelect={setView} />
+
+      {switcherIndex !== null && (
+        <ViewSwitcher
+          index={switcherIndex}
+          onPick={(picked) => { setView(picked); setSwitcher(null) }}
+        />
+      )}
 
       <div className="flex flex-col flex-1 min-w-0">
         <PresetTabBar
