@@ -105,10 +105,12 @@ export function ListsView({ lists, onListsChange }: ListsViewProps) {
     setGoalUnlocked(false)
   }
 
+  // Discard edits. A blank goal can't be locked, so it stays open for typing.
   const revertGoal = () => {
-    if (!selected || !goalBefore.current.trim()) return
-    updateList(selected.id, (l) => ({ ...l, goal: goalBefore.current }))
-    setGoalUnlocked(false)
+    if (!selected) return
+    const goal = goalBefore.current
+    updateList(selected.id, (l) => ({ ...l, goal }))
+    if (goal.trim()) setGoalUnlocked(false)
   }
 
   const addItem = () => {
@@ -187,29 +189,34 @@ export function ListsView({ lists, onListsChange }: ListsViewProps) {
             return (
               <li
                 key={list.id}
-                onClick={() => setSelectedId(list.id)}
                 className={cn(
-                  "group flex items-start gap-2 px-3 py-2 cursor-pointer border-b border-border transition-colors duration-150",
+                  "group flex items-start gap-2 px-3 py-2 border-b border-border transition-colors duration-150 focus-within:bg-tab-hover",
                   selectedId === list.id
                     ? "bg-primary/10 text-foreground"
                     : "text-muted-foreground hover:bg-tab-hover hover:text-foreground"
                 )}
               >
-                {complete ? (
-                  <Check className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" />
-                ) : (
-                  <ListChecks className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className={cn("text-xs truncate", !list.goal.trim() && "italic text-muted-foreground/60")} title={list.goal}>
-                    {list.goal.trim() || "Untitled goal"}
-                  </p>
-                  <p className="text-[10px] font-mono text-muted-foreground/60">
-                    {p.done}/{p.total} done
-                  </p>
-                </div>
                 <button
-                  onClick={(e) => { e.stopPropagation(); deleteList(list.id) }}
+                  onClick={() => setSelectedId(list.id)}
+                  aria-current={selectedId === list.id ? "true" : undefined}
+                  className="flex items-start gap-2 flex-1 min-w-0 text-left outline-none cursor-pointer"
+                >
+                  {complete ? (
+                    <Check className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" />
+                  ) : (
+                    <ListChecks className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  )}
+                  <span className="flex-1 min-w-0">
+                    <span className={cn("block text-xs truncate", !list.goal.trim() && "italic text-muted-foreground/60")} title={list.goal}>
+                      {list.goal.trim() || "Untitled goal"}
+                    </span>
+                    <span className="block text-[10px] font-mono text-muted-foreground/60">
+                      {p.done}/{p.total} done
+                    </span>
+                  </span>
+                </button>
+                <button
+                  onClick={() => deleteList(list.id)}
                   className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
                   aria-label={`Delete list ${list.goal || "Untitled goal"}`}
                 >

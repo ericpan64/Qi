@@ -76,15 +76,29 @@ export default function App() {
     return () => { if (saveTimeout.current) clearTimeout(saveTimeout.current) }
   }, [scratchTabs, lastTabNumber, loaded])
 
-  // Auto-save lists (debounced)
+  // Auto-save lists (debounced). pendingLists holds an edit the timer hasn't written yet.
+  const pendingLists = useRef<QiList[] | null>(null)
   useEffect(() => {
     if (!loaded) return
+    pendingLists.current = lists
     if (listsSaveTimeout.current) clearTimeout(listsSaveTimeout.current)
     listsSaveTimeout.current = setTimeout(() => {
+      pendingLists.current = null
       window.electronAPI?.saveLists(lists)
     }, 500)
     return () => { if (listsSaveTimeout.current) clearTimeout(listsSaveTimeout.current) }
   }, [lists, loaded])
+
+  // Quitting tears the renderer down before the debounce fires, so write any pending edit now
+  useEffect(() => {
+    const flush = () => {
+      if (!pendingLists.current) return
+      window.electronAPI?.saveListsSync(pendingLists.current)
+      pendingLists.current = null
+    }
+    window.addEventListener("beforeunload", flush)
+    return () => window.removeEventListener("beforeunload", flush)
+  }, [])
 
   // Persist websites when they change
   useEffect(() => {

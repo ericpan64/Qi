@@ -43,19 +43,27 @@ interface QiList {
   createdAt: number;
 }
 
-// Coerce persisted lists into the expected shape so a hand-edited store can't crash the view
+// Coerce persisted lists into the expected shape so a hand-edited store can't crash the view.
+// IDs must be unique: the view selects, updates, and deletes by ID, so a duplicate would act on
+// every list (or item) sharing it.
 function normalizeLists(raw: unknown): QiList[] {
   if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const uniqueId = (id: unknown): string => {
+    const next = typeof id === 'string' && id && !seen.has(id) ? id : crypto.randomUUID();
+    seen.add(next);
+    return next;
+  };
   return raw
     .filter((l): l is Record<string, unknown> => !!l && typeof l === 'object')
     .map((l) => ({
-      id: typeof l.id === 'string' && l.id ? l.id : crypto.randomUUID(),
+      id: uniqueId(l.id),
       goal: typeof l.goal === 'string' ? l.goal : '',
       createdAt: typeof l.createdAt === 'number' ? l.createdAt : Date.now(),
       items: (Array.isArray(l.items) ? l.items : [])
         .filter((i): i is Record<string, unknown> => !!i && typeof i === 'object')
         .map((i) => ({
-          id: typeof i.id === 'string' && i.id ? i.id : crypto.randomUUID(),
+          id: uniqueId(i.id),
           text: typeof i.text === 'string' ? i.text : '',
           done: i.done === true,
         })),
@@ -337,6 +345,14 @@ function registerIpc(): void {
     data.lists = lists;
     writeStore(data);
     return data.lists;
+  });
+
+  // Blocking variant for the renderer's unload flush: an async invoke may not finish before teardown
+  ipcMain.on('store:saveListsSync', (e, lists: QiList[]) => {
+    const data = readStore();
+    data.lists = lists;
+    writeStore(data);
+    e.returnValue = true;
   });
 
   ipcMain.handle('stash:list', () => listStash());

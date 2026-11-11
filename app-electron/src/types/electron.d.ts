@@ -22,6 +22,7 @@ interface ElectronAPI {
   saveWindowSizes: (sizes: unknown) => Promise<unknown>;
   saveScratchTabs: (tabs: unknown[], lastTabNumber: number) => Promise<unknown>;
   saveLists: (lists: QiList[]) => Promise<unknown>;
+  saveListsSync: (lists: QiList[]) => boolean;
   listStash: () => Promise<StashEntry[]>;
   searchStash: (query: string) => Promise<StashEntry[]>;
   readStash: (name: string) => Promise<string>;
