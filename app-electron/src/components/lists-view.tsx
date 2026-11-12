@@ -41,18 +41,30 @@ function timing(target: string, completed: string): string {
   return `${n} ${n === 1 ? "day" : "days"} ${days > 0 ? "early" : "late"}`
 }
 
-function isOverdue(list: QiList): boolean {
-  return list.completedAt === undefined && !!list.targetDate && list.targetDate < dayOf(Date.now())
+function isOverdue(list: QiList, today: string): boolean {
+  return list.completedAt === undefined && !!list.targetDate && list.targetDate < today
 }
 
-// Replace a list's items and keep its completion date in step: stamp it when every item
-// becomes done, clear it when a done item is unchecked, and otherwise leave it alone, so
-// adding items to a completed list keeps the original date.
+// Today's local day. Polled because the window stays open for days and a timer aimed at
+// midnight would fire late after the machine sleeps.
+function useToday(): string {
+  const [today, setToday] = useState(() => dayOf(Date.now()))
+  useEffect(() => {
+    const t = setInterval(() => setToday(dayOf(Date.now())), 60_000)
+    return () => clearInterval(t)
+  }, [])
+  return today
+}
+
+// Replace a list's items and keep its completion date in step: stamp it when the change
+// makes every item done, clear it when a done item is unchecked or no items remain, and
+// otherwise leave it alone, so adding items to a completed list keeps the original date.
 export function withItems(list: QiList, items: ListItem[], now = Date.now()): QiList {
   const wasDone = new Set(list.items.filter((i) => i.done).map((i) => i.id))
   const next: QiList = { ...list, items }
-  if (items.some((i) => !i.done && wasDone.has(i.id))) delete next.completedAt
-  else if (next.completedAt === undefined && items.length > 0 && items.every((i) => i.done)) next.completedAt = now
+  const allDone = (list: ListItem[]) => list.length > 0 && list.every((i) => i.done)
+  if (items.length === 0 || items.some((i) => !i.done && wasDone.has(i.id))) delete next.completedAt
+  else if (next.completedAt === undefined && allDone(items) && !allDone(list.items)) next.completedAt = now
   return next
 }
 
@@ -76,6 +88,7 @@ export function listToMarkdown(list: QiList): string {
 export function ListsView({ lists, onListsChange }: ListsViewProps) {
   const [selectedId, setSelectedId] = useState<string | null>(lists[0]?.id ?? null)
   const selected = lists.find((l) => l.id === selectedId) ?? null
+  const today = useToday()
 
   // The goal is locked by default. Unlocking keeps the prior text so Escape can revert it.
   const [goalUnlocked, setGoalUnlocked] = useState(false)
@@ -275,7 +288,7 @@ export function ListsView({ lists, onListsChange }: ListsViewProps) {
                       {list.completedAt !== undefined ? (
                         <> · done {formatDay(dayOf(list.completedAt), false)}</>
                       ) : list.targetDate ? (
-                        <span className={cn(isOverdue(list) && "text-destructive")}>
+                        <span className={cn(isOverdue(list, today) && "text-destructive")}>
                           {" "}· due {formatDay(list.targetDate, false)}
                         </span>
                       ) : null}
@@ -351,7 +364,7 @@ export function ListsView({ lists, onListsChange }: ListsViewProps) {
                     onChange={(e) => setTargetDate(e.target.value)}
                     className={cn(
                       "bg-transparent rounded px-1 outline-none hover:bg-tab-hover focus:bg-tab-hover",
-                      isOverdue(selected) && "text-destructive"
+                      isOverdue(selected, today) && "text-destructive"
                     )}
                   />
                 </label>
