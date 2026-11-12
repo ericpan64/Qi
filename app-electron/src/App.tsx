@@ -185,9 +185,16 @@ export default function App() {
     })
   }, [setSwitcher])
 
+  // A click that picks a view also closes the switcher. Left open, releasing Alt would
+  // commit its highlighted view over the one just picked.
+  const selectView = (picked: ViewMode) => {
+    setView(picked)
+    setSwitcher(null)
+  }
+
   const handleSelectSite = (site: PresetSite) => {
     setActiveId(site.id)
-    setView("browser")
+    selectView("browser")
   }
 
   const handleRenameSite = (id: string, label: string) => {
@@ -244,13 +251,10 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground font-sans">
-      <LeftSidebar activeView={view} onSelect={setView} />
+      <LeftSidebar activeView={view} onSelect={selectView} />
 
       {switcherIndex !== null && (
-        <ViewSwitcher
-          index={switcherIndex}
-          onPick={(picked) => { setView(picked); setSwitcher(null) }}
-        />
+        <ViewSwitcher index={switcherIndex} onPick={selectView} />
       )}
 
       <div className="flex flex-col flex-1 min-w-0">
