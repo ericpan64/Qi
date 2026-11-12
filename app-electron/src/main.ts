@@ -245,28 +245,54 @@ function createWindow(): void {
         _event.preventDefault();
       }
     }
-    // Intercept Cmd/Ctrl+digit on the host page (when no webview has focus)
-    if (input.type === 'keyDown' && (input.meta || input.control) && !input.alt && !input.shift) {
-      const num = parseInt(input.key, 10);
-      if (num >= 1 && num <= 9) {
-        _event.preventDefault();
-        mainWindow!.webContents.send('switch-tab', num);
-      }
-    }
+    handleInput(_event, input);
   });
 
-  // Intercept Cmd/Ctrl+digit inside webview guest pages (webviews have their own webContents)
+  // Webview guest pages have their own webContents, so the same shortcuts are intercepted there
   mainWindow.webContents.on('did-attach-webview', (_event, webviewContents) => {
-    webviewContents.on('before-input-event', (_ev, input) => {
-      if (input.type === 'keyDown' && (input.meta || input.control) && !input.alt && !input.shift) {
-        const num = parseInt(input.key, 10);
-        if (num >= 1 && num <= 9) {
-          _ev.preventDefault();
-          mainWindow!.webContents.send('switch-tab', num);
-        }
-      }
-    });
+    webviewContents.on('before-input-event', handleInput);
   });
+
+  // Releasing Alt can't reach a window that lost focus or was hidden, so close the switcher
+  const cancelSwitcher = () => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('switcher', 'cancel');
+  };
+  mainWindow.on('blur', cancelSwitcher);
+  mainWindow.on('hide', cancelSwitcher);
+}
+
+// Whether the view switcher is showing. Set on Alt+Tab, then kept in step by the renderer,
+// which also closes it on a click.
+let switcherOpen = false;
+
+// Shortcuts that work the same on the host page and inside a focused webview
+function handleInput(event: Electron.Event, input: Electron.Input): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const send = (channel: string, arg: unknown) => mainWindow!.webContents.send(channel, arg);
+
+  // Cmd/Ctrl+digit jumps to a site
+  if (input.type === 'keyDown' && (input.meta || input.control) && !input.alt && !input.shift) {
+    const num = parseInt(input.key, 10);
+    if (num >= 1 && num <= 9) {
+      event.preventDefault();
+      send('switch-tab', num);
+    }
+  }
+
+  // View switcher: hold Alt, Tab or Shift+Tab moves the highlight, releasing Alt switches.
+  // While it is open, Enter switches and Escape closes it, with or without Alt held.
+  // The renderer ignores a commit or cancel when the switcher is closed.
+  if (input.type === 'keyDown' && input.key === 'Tab' && input.alt && !input.meta && !input.control) {
+    event.preventDefault();
+    switcherOpen = true;
+    send('switcher', input.shift ? 'prev' : 'next');
+  } else if (input.type === 'keyDown' && switcherOpen && (input.key === 'Enter' || input.key === 'Escape')) {
+    // Keep the key from also reaching the focused field, where Escape can discard an edit
+    event.preventDefault();
+    send('switcher', input.key === 'Enter' ? 'commit' : 'cancel');
+  } else if (input.type === 'keyUp' && input.key === 'Alt') {
+    send('switcher', 'commit');
+  }
 }
 
 // --- Window Snapping ---
@@ -355,6 +381,10 @@ function registerIpc(): void {
     e.returnValue = true;
   });
 
+  ipcMain.on('switcher:open', (_e, open: boolean) => {
+    switcherOpen = open === true;
+  });
+
   ipcMain.handle('stash:list', () => listStash());
   ipcMain.handle('stash:search', (_e, query: string) => searchStash(query));
   ipcMain.handle('stash:read', (_e, name: string) => fs.readFileSync(stashPath(name), 'utf-8'));
@@ -369,7 +399,11 @@ function registerShortcuts(): void {
   globalShortcut.register('Alt+Space', toggleVisibility);
 
   globalShortcut.register('Alt+Enter', () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    // With the view switcher open, Enter picks the highlighted view even while Alt is held
+    if (switcherOpen) {
+      mainWindow.webContents.send('switcher', 'commit');
+    } else {
       mainWindow.setFullScreen(!mainWindow.isFullScreen());
     }
   });

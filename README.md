@@ -24,6 +24,7 @@ Checking docs or an API reference in a full browser means switching apps and fin
 |---|---|
 | `Alt+Space` | Show or hide Qi |
 | `Cmd+1` to `Cmd+9` | Jump to site 1 to 9 |
+| `Alt+Tab` | Hold `Alt` and tap `Tab` to move through Home, Notes, Lists, and Stash. Release `Alt` or press `Enter` to switch. `Shift` reverses, `Esc` cancels |
 | `Alt+Left/Right/Up/Down` | Snap to screen edge |
 | `Alt+Enter` | Toggle fullscreen |
 | Double-click tab | Rename (`Enter` to save, `Esc` to cancel) |

@@ -30,6 +30,8 @@ interface ElectronAPI {
   deleteStash: (name: string) => Promise<void>;
   openStashFolder: () => Promise<string>;
   onSwitchTab: (callback: (shortcut: number) => void) => () => void;
+  setSwitcherOpen: (open: boolean) => void;
+  onSwitcher: (callback: (action: 'next' | 'prev' | 'commit' | 'cancel') => void) => () => void;
 }
 
 declare global {
