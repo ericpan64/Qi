@@ -212,6 +212,10 @@ function createWindow(): void {
     },
   });
 
+  // Follow the user across desktops (macOS Spaces / Linux workspaces) so the
+  // toggle shortcut always acts on the desktop they are looking at
+  mainWindow.setVisibleOnAllWorkspaces(true);
+
   mainWindow.once('ready-to-show', () => mainWindow!.show());
 
   // On macOS, hide instead of destroying so Alt+Space / dock click can restore
