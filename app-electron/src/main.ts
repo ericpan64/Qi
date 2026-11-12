@@ -41,6 +41,17 @@ interface QiList {
   goal: string;
   items: ListItem[];
   createdAt: number;
+  targetDate?: string;
+  completedAt?: number;
+}
+
+// A real YYYY-MM-DD day. The shape alone admits days like 2024-02-31, which Date rolls into
+// the next month while the overdue check still compares the raw string.
+function isCalendarDay(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [y, m, d] = value.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
 }
 
 // Coerce persisted lists into the expected shape so a hand-edited store can't crash the view.
@@ -60,6 +71,10 @@ function normalizeLists(raw: unknown): QiList[] {
       id: uniqueId(l.id),
       goal: typeof l.goal === 'string' ? l.goal : '',
       createdAt: typeof l.createdAt === 'number' ? l.createdAt : Date.now(),
+      ...(isCalendarDay(l.targetDate) ? { targetDate: l.targetDate } : {}),
+      ...(typeof l.completedAt === 'number' && Number.isFinite(l.completedAt)
+        ? { completedAt: l.completedAt }
+        : {}),
       items: (Array.isArray(l.items) ? l.items : [])
         .filter((i): i is Record<string, unknown> => !!i && typeof i === 'object')
         .map((i) => ({

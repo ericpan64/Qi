@@ -53,6 +53,10 @@ declare global {
     goal: string;
     items: ListItem[];
     createdAt: number;
+    // A calendar day as YYYY-MM-DD
+    targetDate?: string;
+    // Set when every item is done. Adding items later leaves it; unchecking one clears it.
+    completedAt?: number;
   }
 
   interface Window {
